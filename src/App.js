@@ -1,11 +1,75 @@
 import React, { useState, useEffect } from "react";
 
 const STORAGE_KEY = "couple-todo-list";
+const NAME_STORAGE_KEY = "couple-names";
+const CATEGORY_STORAGE_KEY = "couple-categories";
+const FILTER_STORAGE_KEY = "couple-category-filter";
+
+const DEFAULT_CATEGORIES = [
+  { id: "travel", name: "旅行" },
+  { id: "daily", name: "日常" },
+  { id: "food", name: "食事" },
+];
+
+const getTimeSlot = () => {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 11) return "morning";
+  if (hour >= 11 && hour < 17) return "day";
+  if (hour >= 17 && hour < 20) return "evening";
+  return "night";
+};
+
+const getBackgroundForTheme = (slot, variant) => {
+  // variant: "primary" or "alt"
+  if (slot === "morning") {
+    return variant === "primary"
+      ? "linear-gradient(135deg, #ffb36b 0%, #ffdd9a 35%, #ffe9c7 70%, #ffffff 100%)"
+      : "radial-gradient(circle at top, #ff9a73 0%, #ffc76b 40%, #fff4df 80%)";
+  }
+  if (slot === "day") {
+    return variant === "primary"
+      ? "linear-gradient(135deg, #45b2ff 0%, #81d7ff 40%, #ffffff 80%)"
+      : "radial-gradient(circle at top, #2f8cff 0%, #6fd6ff 35%, #f5fbff 80%)";
+  }
+  if (slot === "evening") {
+    return variant === "primary"
+      ? "linear-gradient(135deg, #2f7254 0%, #ffb26b 40%, #ffe5b8 80%)"
+      : "radial-gradient(circle at top, #275c47 0%, #ffa65c 35%, #ffe9cf 80%)";
+  }
+  // night
+  return variant === "primary"
+    ? "linear-gradient(135deg, #050b24 0%, #081736 35%, #102a4c 70%, #1c4469 100%)"
+    : "radial-gradient(circle at top, #020615 0%, #071a3a 35%, #123f63 75%, #040914 100%)";
+};
+
+const BACKGROUND_IMAGES = [
+  { id: "morning", src: "/yuki_bench.jpg", slot: "morning" },
+  { id: "day", src: "/shinjukueki.jpg", slot: "day" },
+  { id: "evening", src: "/takashimaya.jpg", slot: "evening" },
+  { id: "night", src: "/tokyo_tower_river.jpg", slot: "night" },
+];
 
 function App() {
   const [tasks, setTasks] = useState([]);
   const [text, setText] = useState("");
   const [owner, setOwner] = useState("partner1");
+  const [nameA, setNameA] = useState("A");
+  const [nameB, setNameB] = useState("B");
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    DEFAULT_CATEGORIES[0]?.id || ""
+  );
+  const [filterCategoryId, setFilterCategoryId] = useState("all");
+  const [theme, setTheme] = useState({
+    slot: getTimeSlot(),
+    variant: "primary",
+  });
+  const [bgIndex, setBgIndex] = useState(() => {
+    const slot = getTimeSlot();
+    const found = BACKGROUND_IMAGES.findIndex((img) => img.slot === slot);
+    return found === -1 ? 0 : found;
+  });
   const [isBtnHover, setIsBtnHover] = useState(false);
 
   useEffect(() => {
@@ -20,11 +84,78 @@ function App() {
         console.error(e);
       }
     }
+
+    const savedNames = localStorage.getItem(NAME_STORAGE_KEY);
+    if (savedNames) {
+      try {
+        const parsed = JSON.parse(savedNames);
+        if (parsed && typeof parsed === "object") {
+          if (typeof parsed.nameA === "string") {
+            setNameA(parsed.nameA);
+          }
+          if (typeof parsed.nameB === "string") {
+            setNameB(parsed.nameB);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const savedCategories = localStorage.getItem(CATEGORY_STORAGE_KEY);
+    if (savedCategories) {
+      try {
+        const parsed = JSON.parse(savedCategories);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCategories(parsed);
+          setSelectedCategoryId(parsed[0].id);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const savedFilter = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (savedFilter) {
+      setFilterCategoryId(savedFilter);
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      NAME_STORAGE_KEY,
+      JSON.stringify({ nameA, nameB })
+    );
+  }, [nameA, nameB]);
+
+  useEffect(() => {
+    localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem(FILTER_STORAGE_KEY, filterCategoryId);
+  }, [filterCategoryId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTheme((prev) => ({
+        ...prev,
+        variant: prev.variant === "primary" ? "alt" : "primary",
+      }));
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setBgIndex((prev) => (prev + 1) % BACKGROUND_IMAGES.length);
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -35,6 +166,7 @@ function App() {
       text: trimmed,
       owner,
       done: false,
+      categoryId: selectedCategoryId || "",
     };
     setTasks((prev) => [newTask, ...prev]);
     setText("");
@@ -57,7 +189,39 @@ function App() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const ownerLabel = (o) => (o === "partner1" ? "Hiroto" : "Marina");
+  const ownerLabel = (o) =>
+    o === "partner1" ? nameA || "A" : nameB || "B";
+
+  const categoryLabel = (id) => {
+    if (!id) return "カテゴリなし";
+    const c = categories.find((cat) => cat.id === id);
+    return c ? c.name : "カテゴリなし";
+  };
+
+  const handleAddCategory = (e) => {
+    e.preventDefault();
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) return;
+    const id = `cat-${Date.now()}`;
+    const next = [...categories, { id, name: trimmed }];
+    setCategories(next);
+    setNewCategoryName("");
+    if (!selectedCategoryId) {
+      setSelectedCategoryId(id);
+    }
+  };
+
+  const handleRemoveCategory = (id) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    if (selectedCategoryId === id) {
+      setSelectedCategoryId("");
+    }
+    if (filterCategoryId === id) {
+      setFilterCategoryId("all");
+    }
+  };
+
+  const pageBackground = getBackgroundForTheme(theme.slot, theme.variant);
 
   const styles = {
     page: {
@@ -65,9 +229,8 @@ function App() {
       margin: 0,
       fontFamily:
         '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, "Noto Sans JP", sans-serif',
-      background:
-        "radial-gradient(circle at top left, #f9e4ff, #f0f4ff 40%, #ffffff)",
-      color: "#333",
+      background: pageBackground,
+      color: "#f5f7ff",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -77,13 +240,14 @@ function App() {
     card: {
       width: "100%",
       maxWidth: "640px",
-      background: "rgba(255,255,255,0.9)",
-      boxShadow: "0 18px 45px rgba(0,0,0,0.09)",
+      background:
+        "linear-gradient(135deg, rgba(11,16,40,0.96), rgba(16,26,60,0.96))",
+      boxShadow: "0 18px 55px rgba(0,0,0,0.65)",
       borderRadius: "20px",
       padding: "24px 24px 20px",
       boxSizing: "border-box",
       backdropFilter: "blur(10px)",
-      border: "1px solid rgba(255,255,255,0.8)",
+      border: "1px solid rgba(255,255,255,0.08)",
     },
     titleArea: {
       display: "flex",
@@ -95,15 +259,15 @@ function App() {
       fontSize: "22px",
       letterSpacing: "0.08em",
       textTransform: "uppercase",
-      color: "#333",
+      color: "#f7f8ff",
     },
     subtitle: {
       fontSize: "12px",
-      color: "#999",
+      color: "#9da4c7",
     },
     heart: {
       fontSize: "22px",
-      color: "#ff7aa2",
+      color: "#ff97c2",
     },
     form: {
       display: "flex",
@@ -114,21 +278,23 @@ function App() {
     },
     select: {
       borderRadius: "999px",
-      border: "1px solid #ddd",
+      border: "1px solid rgba(255,255,255,0.16)",
       padding: "8px 12px",
       fontSize: "14px",
       outline: "none",
-      backgroundColor: "#fff",
+      backgroundColor: "rgba(6,10,28,0.9)",
+      color: "#f7f8ff",
     },
     input: {
       flex: 1,
       minWidth: "160px",
       borderRadius: "999px",
-      border: "1px solid #ddd",
+      border: "1px solid rgba(255,255,255,0.16)",
       padding: "8px 14px",
       fontSize: "14px",
       outline: "none",
-      backgroundColor: "#fff",
+      backgroundColor: "rgba(6,10,28,0.9)",
+      color: "#f7f8ff",
     },
     button: {
       borderRadius: "999px",
@@ -137,8 +303,8 @@ function App() {
       fontSize: "14px",
       fontWeight: 600,
       background:
-        "linear-gradient(135deg, #ff8fb1, #ffb88f 40%, #ffd39f 80%)",
-      color: "#fff",
+        "linear-gradient(135deg, #ff7ca8, #ffb86b 40%, #ffe29f 80%)",
+      color: "#1b1230",
       cursor: "pointer",
       whiteSpace: "nowrap",
       boxShadow: "0 8px 20px rgba(255,143,177,0.45)",
@@ -155,7 +321,34 @@ function App() {
       alignItems: "center",
       marginBottom: "4px",
       fontSize: "12px",
-      color: "#999",
+      color: "#a0a7cd",
+    },
+    nameRow: {
+      display: "flex",
+      gap: "8px",
+      marginTop: "4px",
+      marginBottom: "4px",
+      fontSize: "11px",
+      color: "#a0a7cd",
+      flexWrap: "wrap",
+    },
+    nameField: {
+      display: "flex",
+      alignItems: "center",
+      gap: "4px",
+    },
+    nameLabel: {
+      minWidth: "36px",
+    },
+    nameInput: {
+      borderRadius: "999px",
+      border: "1px solid rgba(255,255,255,0.18)",
+      padding: "4px 8px",
+      fontSize: "11px",
+      outline: "none",
+      backgroundColor: "rgba(6,10,28,0.9)",
+      color: "#f7f8ff",
+      width: "110px",
     },
     pillWrapper: {
       display: "flex",
@@ -165,24 +358,90 @@ function App() {
     pillA: {
       padding: "3px 10px",
       borderRadius: "999px",
-      border: "1px solid #ffd2e3",
-      backgroundColor: "#fff5fa",
-      color: "#ff7aa2",
+      border: "1px solid rgba(255,151,194,0.35)",
+      backgroundColor: "rgba(255,151,194,0.12)",
+      color: "#ff9ac4",
     },
     pillB: {
       padding: "3px 10px",
       borderRadius: "999px",
-      border: "1px solid #c7dcff",
-      backgroundColor: "#f1f5ff",
-      color: "#5b7cff",
+      border: "1px solid rgba(130,171,255,0.4)",
+      backgroundColor: "rgba(130,171,255,0.16)",
+      color: "#9fb6ff",
     },
     counter: {
       fontSize: "11px",
       padding: "3px 10px",
       borderRadius: "999px",
-      backgroundColor: "#f5f5f7",
-      border: "1px solid #e3e3e8",
-      color: "#777",
+      backgroundColor: "rgba(13,22,54,0.9)",
+      border: "1px solid rgba(255,255,255,0.1)",
+      color: "#a0a7cd",
+    },
+    categoryRow: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "6px",
+      marginTop: "8px",
+      marginBottom: "8px",
+      fontSize: "11px",
+      color: "#9da4c7",
+    },
+    categoryForm: {
+      display: "flex",
+      gap: "6px",
+      flexWrap: "wrap",
+      alignItems: "center",
+    },
+    categoryInput: {
+      borderRadius: "999px",
+      border: "1px solid rgba(255,255,255,0.18)",
+      padding: "4px 8px",
+      fontSize: "11px",
+      outline: "none",
+      backgroundColor: "rgba(6,10,28,0.9)",
+      color: "#f7f8ff",
+      minWidth: "140px",
+    },
+    categoryAddButton: {
+      borderRadius: "999px",
+      border: "none",
+      padding: "5px 10px",
+      fontSize: "11px",
+      background:
+        "linear-gradient(135deg, #4b63ff 0%, #8a9bff 40%, #c6d0ff 100%)",
+      color: "#101539",
+      cursor: "pointer",
+    },
+    categoryChips: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "4px",
+    },
+    categoryChip: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "4px",
+      padding: "3px 8px",
+      borderRadius: "999px",
+      backgroundColor: "rgba(11,17,44,0.9)",
+      border: "1px solid rgba(255,255,255,0.08)",
+    },
+    categoryChipDelete: {
+      border: "none",
+      padding: 0,
+      background: "transparent",
+      fontSize: "12px",
+      cursor: "pointer",
+      color: "#8e95c4",
+    },
+    filterSelect: {
+      borderRadius: "999px",
+      border: "1px solid rgba(255,255,255,0.16)",
+      padding: "4px 8px",
+      fontSize: "11px",
+      outline: "none",
+      backgroundColor: "rgba(6,10,28,0.9)",
+      color: "#f7f8ff",
     },
     list: {
       listStyle: "none",
@@ -199,8 +458,8 @@ function App() {
       gap: "12px",
       padding: "10px 10px 9px 6px",
       borderRadius: "14px",
-      backgroundColor: "#fafbff",
-      border: "1px solid #edf0ff",
+      backgroundColor: "rgba(9,15,42,0.96)",
+      border: "1px solid rgba(255,255,255,0.05)",
       marginBottom: "6px",
     },
     itemLeft: {
@@ -214,22 +473,22 @@ function App() {
       width: "16px",
       height: "16px",
       cursor: "pointer",
-      accentColor: "#ff7aa2",
+      accentColor: "#ff9ac4",
     },
     badgeA: {
       fontSize: "11px",
       padding: "3px 9px",
       borderRadius: "999px",
-      backgroundColor: "#ffe3f0",
-      color: "#ff5e9a",
+      backgroundColor: "rgba(255,151,194,0.18)",
+      color: "#ffb6d3",
       flexShrink: 0,
     },
     badgeB: {
       fontSize: "11px",
       padding: "3px 9px",
       borderRadius: "999px",
-      backgroundColor: "#e0e6ff",
-      color: "#4b63ff",
+      backgroundColor: "rgba(130,171,255,0.22)",
+      color: "#aec3ff",
       flexShrink: 0,
     },
     text: (done) => ({
@@ -237,40 +496,124 @@ function App() {
       overflow: "hidden",
       textOverflow: "ellipsis",
       whiteSpace: "nowrap",
-      color: done ? "#aaa" : "#333",
+      color: done ? "#6b719a" : "#f7f8ff",
       textDecoration: done ? "line-through" : "none",
     }),
     deleteButton: {
       border: "none",
       background: "transparent",
       cursor: "pointer",
-      color: "#ccc",
+      color: "#777ea8",
       fontSize: "16px",
       padding: "0 2px",
       flexShrink: 0,
     },
     emptyState: {
       fontSize: "13px",
-      color: "#b5b5c0",
+      color: "#7f86b3",
       textAlign: "center",
       padding: "16px 4px 8px",
     },
   };
 
-  const total = tasks.length;
-  const doneCount = tasks.filter((t) => t.done).length;
+  const filteredTasks =
+    filterCategoryId === "all"
+      ? tasks
+      : tasks.filter((t) => t.categoryId === filterCategoryId);
+
+  const total = filteredTasks.length;
+  const doneCount = filteredTasks.filter((t) => t.done).length;
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
+    <div
+      style={{
+        position: "relative",
+        minHeight: "100vh",
+        overflow: "hidden",
+      }}
+    >
+      {BACKGROUND_IMAGES.map((img, index) => (
+        <div
+          key={img.id}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundImage: `url(${img.src})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(18px) brightness(0.9)",
+            transform: "scale(1.08)",
+            transition: "opacity 1.2s ease-in-out",
+            opacity: index === bgIndex ? 1 : 0,
+            pointerEvents: "none",
+          }}
+        />
+      ))}
+      <div style={styles.page}>
+        <div style={styles.card}>
         <div style={styles.titleArea}>
           <div>
-            <div style={styles.title}>Couple Bucket List</div>
+            <div style={styles.title}>Our To-Do List</div>
             <div style={styles.subtitle}>
-              二人だけの「やりたいこと」を集めよう
+              二人でシェアする、ちょっとした「やりたいこと」。
             </div>
           </div>
           <div style={styles.heart}>♡</div>
+        </div>
+
+        <div style={styles.nameRow}>
+          <div style={styles.nameField}>
+            <span style={styles.nameLabel}>Person 1</span>
+            <input
+              type="text"
+              placeholder="例：Hiroto"
+              value={nameA}
+              onChange={(e) => setNameA(e.target.value)}
+              style={styles.nameInput}
+            />
+          </div>
+          <div style={styles.nameField}>
+            <span style={styles.nameLabel}>Person 2</span>
+            <input
+              type="text"
+              placeholder="例：Marina"
+              value={nameB}
+              onChange={(e) => setNameB(e.target.value)}
+              style={styles.nameInput}
+            />
+          </div>
+        </div>
+
+        <form style={styles.categoryForm} onSubmit={handleAddCategory}>
+          <span>カテゴリ</span>
+          <input
+            type="text"
+            placeholder="例：記念日、デート、イベント..."
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            style={styles.categoryInput}
+          />
+          <button type="submit" style={styles.categoryAddButton}>
+            追加
+          </button>
+        </form>
+
+        <div style={styles.categoryRow}>
+          <div style={styles.categoryChips}>
+            {categories.map((c) => (
+              <span key={c.id} style={styles.categoryChip}>
+                {c.name}
+                <button
+                  type="button"
+                  style={styles.categoryChipDelete}
+                  onClick={() => handleRemoveCategory(c.id)}
+                  aria-label={`${c.name} を削除`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
 
         <form style={styles.form} onSubmit={handleAdd}>
@@ -279,8 +622,12 @@ function App() {
             onChange={(e) => setOwner(e.target.value)}
             style={styles.select}
           >
-            <option value="partner1">Hiroto のやりたいこと</option>
-            <option value="partner2">Marina のやりたいこと</option>
+            <option value="partner1">
+              {(nameA || "Person 1") + " のやりたいこと"}
+            </option>
+            <option value="partner2">
+              {(nameB || "Person 2") + " のやりたいこと"}
+            </option>
           </select>
           <input
             type="text"
@@ -289,6 +636,17 @@ function App() {
             onChange={(e) => setText(e.target.value)}
             style={styles.input}
           />
+          <select
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
+            style={styles.select}
+          >
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
           <button
             type="submit"
             style={{
@@ -304,21 +662,33 @@ function App() {
 
         <div style={styles.metaRow}>
           <div style={styles.pillWrapper}>
-            <span style={styles.pillA}>Hiroto</span>
-            <span style={styles.pillB}>Marina</span>
+            <span style={styles.pillA}>{nameA || "Person 1"}</span>
+            <span style={styles.pillB}>{nameB || "Person 2"}</span>
           </div>
+          <select
+            style={styles.filterSelect}
+            value={filterCategoryId}
+            onChange={(e) => setFilterCategoryId(e.target.value)}
+          >
+            <option value="all">すべてのカテゴリ</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}だけ
+              </option>
+            ))}
+          </select>
           <span style={styles.counter}>
             {doneCount} / {total} 達成
           </span>
         </div>
 
         <ul style={styles.list}>
-          {tasks.length === 0 && (
+          {filteredTasks.length === 0 && (
             <li style={styles.emptyState}>
-              まだ何もありません。まずは一つ目の「やりたい」を追加してみましょう。
+              該当する「やりたい」がありません。カテゴリやフィルターを変えてみましょう。
             </li>
           )}
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <li key={task.id} style={styles.item}>
               <div style={styles.itemLeft}>
                 <input
@@ -336,6 +706,9 @@ function App() {
                 </span>
                 <span style={styles.text(task.done)}>{task.text}</span>
               </div>
+              <div style={{ fontSize: "11px", color: "#999", marginRight: 8 }}>
+                {categoryLabel(task.categoryId)}
+              </div>
               <button
                 type="button"
                 onClick={() => removeTask(task.id)}
@@ -347,6 +720,7 @@ function App() {
             </li>
           ))}
         </ul>
+      </div>
       </div>
     </div>
   );
