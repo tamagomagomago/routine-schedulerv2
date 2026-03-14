@@ -43,7 +43,7 @@ const getBackgroundForTheme = (slot, variant) => {
 };
 
 const BACKGROUND_IMAGES = [
-  { id: "morning", src: "/yuki_bench.jpg", slot: "morning" },
+  
   { id: "day", src: "/shinjukueki.jpg", slot: "day" },
   { id: "evening", src: "/takashimaya.jpg", slot: "evening" },
   { id: "night", src: "/tokyo_tower_river.jpg", slot: "night" },
