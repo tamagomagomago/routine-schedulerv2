@@ -1,3 +1,6 @@
 {
-  "root": "spe"
+  "buildCommand": "cd spe && npm run build",
+  "devCommand": "cd spe && npm run dev",
+  "installCommand": "cd spe && npm install",
+  "outputDirectory": "spe"
 }
