@@ -55,14 +55,20 @@ export default function FocusModeSelector({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
       });
+
       if (res.ok) {
         if (selectedMode === modeName) {
           onSelectMode(modes[0]?.mode_name || "FOOH制作");
         }
         onModesChange?.();
+        alert(`「${modeName}」を削除しました`);
+      } else {
+        const error = await res.json();
+        alert(`削除に失敗しました: ${error.error || "不明なエラー"}`);
       }
     } catch (e) {
       console.error("Failed to delete mode:", e);
+      alert(`削除エラー: ${String(e)}`);
     }
   };
 

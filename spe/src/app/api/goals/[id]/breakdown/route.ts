@@ -83,7 +83,11 @@ export async function POST(
           end_date: mg.end_date,
           parent_id: goalId,
         }).select().single();
-        if (!mgError && mgData) savedMonthlyIds.push(mgData.id);
+        if (mgError) {
+          console.error("[/api/goals/:id/breakdown] Monthly goal save error:", mgError);
+          return NextResponse.json({ error: `月次目標保存エラー: ${mgError.message}` }, { status: 500 });
+        }
+        if (mgData) savedMonthlyIds.push(mgData.id);
       }
 
       // 週次目標を保存（月次目標に均等に紐付け）
@@ -93,7 +97,7 @@ export async function POST(
         const parentMonthlyId = savedMonthlyIds.length > 0
           ? savedMonthlyIds[i % savedMonthlyIds.length]
           : null;
-        await supabase.from("goals").insert({
+        const { error: wgError } = await supabase.from("goals").insert({
           title: wg.title,
           description: wg.description || null,
           category: goal.category,
@@ -105,6 +109,10 @@ export async function POST(
           end_date: wg.end_date,
           parent_id: parentMonthlyId,
         });
+        if (wgError) {
+          console.error("[/api/goals/:id/breakdown] Weekly goal save error:", wgError);
+          return NextResponse.json({ error: `週次目標保存エラー: ${wgError.message}` }, { status: 500 });
+        }
       }
 
       // TODOを保存（マスターリストへ）
