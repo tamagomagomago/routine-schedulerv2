@@ -570,10 +570,13 @@ export default function GoalPanel() {
         await fetchGoals();
         setBreakdownResult(null);
         setBreakdownGoalId(null);
-        alert("保存しました");
+        alert("目標・TODO を保存しました！マスターリストと目標パネルで確認できます");
       } else {
-        alert("保存に失敗しました");
+        const errorData = await res.json();
+        alert(`保存に失敗しました: ${errorData.error || "詳細不明"}`);
       }
+    } catch (err) {
+      alert(`保存エラー: ${err instanceof Error ? err.message : "詳細不明"}`);
     } finally {
       setBreakdownSaving(false);
     }

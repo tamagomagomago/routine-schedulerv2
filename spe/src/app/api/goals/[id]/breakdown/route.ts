@@ -108,17 +108,22 @@ export async function POST(
       }
 
       // TODOを保存（マスターリストへ）
+      const now = new Date().toISOString();
       for (const todo of body.todos) {
-        await supabase.from("todos").insert({
+        const { error: todoError } = await supabase.from("todos").insert({
           title: todo.title,
           priority: todo.priority,
           estimated_minutes: todo.estimated_minutes,
           category: todo.category,
           is_completed: false,
           is_today: false,
-          today_date: null,
           goal_id: goalId,
+          created_at: now,
+          updated_at: now,
         });
+        if (todoError) {
+          return NextResponse.json({ error: `TODO保存エラー: ${todoError.message}` }, { status: 500 });
+        }
       }
 
       return NextResponse.json({ ok: true });
