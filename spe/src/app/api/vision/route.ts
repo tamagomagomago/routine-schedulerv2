@@ -50,10 +50,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     if (!BLOB_TOKEN) {
-      return NextResponse.json(
-        { error: "BLOB_READ_WRITE_TOKEN is not configured" },
-        { status: 500 }
-      );
+      // BLOB_TOKEN not configured - return empty images gracefully
+      return NextResponse.json({ images: [] });
     }
 
     const { searchParams } = new URL(request.url);
@@ -75,7 +73,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ images });
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    // If Blob storage fails, return empty gracefully
+    return NextResponse.json({ images: [] });
   }
 }
 
