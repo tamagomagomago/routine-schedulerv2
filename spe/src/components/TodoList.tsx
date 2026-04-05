@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Todo, CreateTodoInput, GeneratedTodo, PreferredTime } from "@/types";
+import Link from "next/link";
+import FocusButton from "./focus/FocusButton";
 
 // 優先度ラベル→数値
 const PRIORITY_TO_NUM: Record<string, number> = { 高: 1, 中: 3, 低: 5 };
@@ -192,16 +194,12 @@ function TodayTodoCard({
       }`}
     >
       <div className="flex items-start gap-2">
-        <button
-          onClick={() => onToggle(todo.id, !todo.is_completed)}
-          className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
-            todo.is_completed
-              ? "border-green-500 bg-green-500"
-              : "border-gray-500 hover:border-green-400"
-          }`}
-        >
-          {todo.is_completed && <span className="text-white text-xs">✓</span>}
-        </button>
+        <input
+          type="checkbox"
+          checked={todo.is_completed}
+          onChange={() => onToggle(todo.id, !todo.is_completed)}
+          className="mt-0.5 w-5 h-5 shrink-0 cursor-pointer accent-green-500"
+        />
         <div className="flex-1 min-w-0">
           {/* タイトル（タップで編集） */}
           {editingTitle ? (
@@ -445,14 +443,29 @@ export default function TodoList({
     await fetchTodos();
   };
 
-  // 完了トグル
+  // 完了トグル（楽観的UI更新）
   const handleToggle = async (id: number, completed: boolean) => {
-    await fetch(`/api/todos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_completed: completed }),
-    });
-    await fetchTodos();
+    // 楽観的UI更新：即座にローカル状態を更新
+    setTodayTodos(prevTodos =>
+      prevTodos.map(todo =>
+        todo.id === id
+          ? { ...todo, is_completed: completed, completed_at: completed ? new Date().toISOString() : null }
+          : todo
+      )
+    );
+
+    // バックグラウンドでAPIを呼び出し
+    try {
+      await fetch(`/api/todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_completed: completed }),
+      });
+    } catch (e) {
+      console.error("Toggle todo failed:", e);
+      // エラーがあれば、サーバー状態を再度取得
+      await fetchTodos();
+    }
   };
 
   // 編集
@@ -971,6 +984,13 @@ export default function TodoList({
               </details>
             );
           })()}
+
+          {/* 集中を始めるボタン */}
+          <div className="px-3 py-2">
+            <Link href="/focus" className="block">
+              <FocusButton onClick={() => {}} />
+            </Link>
+          </div>
 
           <div className="px-3 py-2 flex-1">
             {todayTodos.length === 0 ? (

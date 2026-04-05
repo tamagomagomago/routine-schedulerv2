@@ -152,3 +152,46 @@ export interface GeneratedTodo {
   cat: string;
   est: number;
 }
+
+// Focus Session Types
+export interface FocusSession {
+  id: number;
+  user_id: string;
+  mode_name: string;
+  target_minutes: number;
+  actual_minutes?: number | null;
+  break_minutes?: number | null;
+  start_time: string;
+  end_time?: string | null;
+  break_end_time?: string | null;
+  session_status: "active" | "completed" | "paused";
+  created_at: string;
+  updated_at: string;
+  tip?: string; // ランダムな集中のコツ
+}
+
+export interface FocusMode {
+  id: number;
+  user_id: string;
+  mode_name: string;
+  color_hex: string;
+  created_at: string;
+}
+
+export interface FocusGoal {
+  id: number;
+  user_id: string;
+  goal_type: "daily" | "weekly" | "monthly";
+  target_minutes: number;
+  start_date: string;
+  end_date?: string | null;
+  created_at: string;
+}
+
+export interface FocusTodayStats {
+  total_minutes: number;
+  session_count: number;
+  breakdown_by_mode: Record<string, number>;
+  sessions: FocusSession[];
+  today_goal_minutes: number;
+}

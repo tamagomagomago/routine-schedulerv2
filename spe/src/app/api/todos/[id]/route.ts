@@ -47,6 +47,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const supabase = createServerClient();
     const body = await request.json().catch(() => ({}));
 
+    console.log("PATCH /api/todos/[id] - params:", params);
+    console.log("PATCH /api/todos/[id] - body:", body);
+
     // is_completed, is_today など部分的に更新
     const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -73,6 +76,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       updates.title = body.title.trim();
     }
 
+    console.log("PATCH /api/todos/[id] - updates:", updates);
+
     const { data, error } = await supabase
       .from("todos")
       .update(updates)
@@ -80,9 +85,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       .select()
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    console.log("PATCH /api/todos/[id] - response:", { data, error });
+
+    if (error) {
+      console.error("PATCH /api/todos/[id] - Supabase error:", error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json(data);
   } catch (e) {
+    console.error("PATCH /api/todos/[id] - Exception:", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
