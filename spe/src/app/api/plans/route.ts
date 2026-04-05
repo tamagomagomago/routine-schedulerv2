@@ -20,14 +20,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       // Table doesn't exist or other error - return null gracefully
-      if (error.message.includes("relation") || error.message.includes("does not exist")) {
-        return NextResponse.json(null);
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[/api/plans] DB Error:", error);
+      return NextResponse.json(null);
     }
     return NextResponse.json(data ?? null);
   } catch (e) {
     // Missing env var or other initialization error
+    console.error("[/api/plans] Error:", e);
     return NextResponse.json(null);
   }
 }
