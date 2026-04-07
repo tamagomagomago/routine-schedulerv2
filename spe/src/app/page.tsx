@@ -10,6 +10,7 @@ import TodoList from "@/components/TodoList";
 import WeatherPanel from "@/components/WeatherPanel";
 import HowToPanel from "@/components/HowToPanel";
 import FocusButton from "@/components/focus/FocusButton";
+import FocusTaskSelector from "@/components/focus/FocusTaskSelector";
 import WeeklyReviewPanel from "@/components/WeeklyReviewPanel";
 import VisionBoard from "@/components/VisionBoard";
 import TodayMission from "@/components/TodayMission";
@@ -30,6 +31,10 @@ export default function Home() {
 
   // ===== タイマー状態 =====
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
+
+  // ===== シングルフォーカス状態 =====
+  const [selectedFocusTask, setSelectedFocusTask] = useState<Todo | null>(null);
+  const [showFocusSelector, setShowFocusSelector] = useState(false);
 
   // ref: スクロール対象セクション
   const routineRef = useRef<HTMLDivElement>(null);
@@ -240,16 +245,52 @@ export default function Home() {
         {!isReviewDay && <WeeklyReviewPanel />}
 
         {/* 集中を始める - 独立セクション */}
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">⏱</span>
-            <div className="flex-1">
-              <p className="text-gray-200 font-semibold">深く集中する</p>
-              <p className="text-xs text-gray-500">集中モードで不要な干渉を排除</p>
+        <div className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-gray-800">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⏱</span>
+              <div className="flex-1">
+                <p className="text-gray-200 font-semibold">深く集中する</p>
+                <p className="text-xs text-gray-500">集中モードで不要な干渉を排除</p>
+              </div>
+              <Link href="/focus" title="集中モード">
+                <FocusButton onClick={() => {}} />
+              </Link>
             </div>
-            <Link href="/focus" title="集中モード">
-              <FocusButton onClick={() => {}} />
-            </Link>
+          </div>
+
+          {/* シングルフォーカスセクション */}
+          <div className="px-4 py-3">
+            <button
+              onClick={() => setShowFocusSelector(!showFocusSelector)}
+              className="w-full text-left text-xs text-gray-400 hover:text-gray-300 transition-colors py-2"
+            >
+              {showFocusSelector ? "▲ シングルフォーカス" : "▼ シングルフォーカスを設定"}
+            </button>
+
+            {showFocusSelector && (
+              <div className="mt-2">
+                <FocusTaskSelector
+                  onTaskSelect={setSelectedFocusTask}
+                  selectedTask={selectedFocusTask}
+                />
+              </div>
+            )}
+
+            {selectedFocusTask && !showFocusSelector && (
+              <div className="bg-red-600/20 border border-red-500/50 rounded-lg p-2.5 mt-2">
+                <p className="text-xs text-red-300 mb-1">🎯 フォーカス対象</p>
+                <p className="text-sm font-semibold text-red-100 truncate">
+                  {selectedFocusTask.title}
+                </p>
+                <button
+                  onClick={() => setShowFocusSelector(true)}
+                  className="text-xs text-red-200/70 hover:text-red-200 mt-1 underline"
+                >
+                  変更
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

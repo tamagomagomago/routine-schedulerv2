@@ -42,15 +42,12 @@ export default function TodoTimer({
 }) {
   const [elapsed, setElapsed] = useState(0);
   const notifiedRef = useRef(false);
-  const autoCompletedRef = useRef(false);
   const totalSec = timer.estimatedMinutes * 60;
 
   useEffect(() => {
     const tick = () => {
       const s = Math.floor((Date.now() - timer.startedAt) / 1000);
       setElapsed(s);
-
-      // 推定時間に達したら通知を送る
       if (s >= totalSec && !notifiedRef.current) {
         notifiedRef.current = true;
         fetch("/api/timer/notify", {
@@ -59,18 +56,11 @@ export default function TodoTimer({
           body: JSON.stringify({ title: timer.todoTitle, minutes: timer.estimatedMinutes }),
         });
       }
-
-      // 推定時間に達したら自動完了
-      if (s >= totalSec && !autoCompletedRef.current) {
-        autoCompletedRef.current = true;
-        // 次のフレームで実行して通知が確実に送られるようにする
-        setTimeout(() => onComplete(s), 100);
-      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [timer.startedAt, totalSec, timer.todoTitle, timer.estimatedMinutes, onComplete]);
+  }, [timer.startedAt, totalSec, timer.todoTitle, timer.estimatedMinutes]);
 
   const remaining = totalSec - elapsed;          // 負の数 = 超過
   const isOvertime = remaining < 0;
