@@ -297,26 +297,6 @@ function TodayTodoCard({
                 ))}
               </div>
 
-              {/* 時間帯選択 */}
-              <div className="flex items-center gap-1 mt-1">
-                <span className="text-gray-600 text-xs shrink-0">いつ？</span>
-                {TIME_PREF_OPTIONS.map((opt) => {
-                  const active = todo.preferred_time === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => onSetPreferredTime(todo.id, active ? null : opt.value)}
-                      className={`text-xs px-2 py-0.5 rounded-lg border font-medium transition-all ${
-                        active
-                          ? "border-blue-400 bg-blue-600 text-white shadow-sm shadow-blue-900"
-                          : "border-gray-700 bg-gray-900 text-gray-500 hover:border-gray-500 hover:text-gray-300"
-                      }`}
-                    >
-                      {active && "✓ "}{opt.emoji}{opt.label}
-                    </button>
-                  );
-                })}
-              </div>
             </>
           )}
         </div>

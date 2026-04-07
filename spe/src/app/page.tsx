@@ -243,15 +243,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* DayTypeSelector + 起床時刻 */}
-        <DayTypeSelector
-          value={dayType}
-          onChange={handleDayTypeChange}
-          date={date}
-          onDateChange={setDate}
-          wakeTime={wakeTime}
-          onWakeTimeChange={handleWakeTimeChange}
-        />
 
         {/* アクティブタイマー（実行中のみ表示） */}
         {activeTimer && (
