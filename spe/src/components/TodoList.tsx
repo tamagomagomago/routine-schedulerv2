@@ -106,11 +106,13 @@ function MasterTodoCard({
   onMoveToToday,
   onEdit,
   onDelete,
+  isSelectedFocus,
 }: {
   todo: Todo;
   onMoveToToday: (id: number) => void;
   onEdit: (todo: Todo) => void;
   onDelete: (id: number) => void;
+  isSelectedFocus?: boolean;
 }) {
   const [isChecked, setIsChecked] = useState(false);
 
@@ -123,10 +125,14 @@ function MasterTodoCard({
 
   const priorityLabel = numToLabel(todo.priority);
   const hasDeadlineSoon = isDeadlineSoon(todo.due_date);
-  const borderClass = hasDeadlineSoon ? "border-red-600 bg-red-950/30" : "border-gray-700 bg-gray-800";
+  const borderClass = isSelectedFocus
+    ? "border-cyan-500 bg-cyan-950/40"
+    : hasDeadlineSoon
+    ? "border-red-600 bg-red-950/30"
+    : "border-gray-700 bg-gray-800";
 
   return (
-    <div className={`${borderClass} rounded-lg p-2.5 hover:border-gray-600 transition-colors border`}>
+    <div className={`${borderClass} rounded-lg p-2.5 hover:border-gray-600 transition-colors border ${isSelectedFocus ? "ring-2 ring-cyan-500/40" : ""}`} style={isSelectedFocus ? { boxShadow: "0 0 12px rgba(34, 211, 238, 0.3)" } : {}}>
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-gray-200 text-sm font-medium leading-tight break-words">
@@ -189,6 +195,7 @@ function TodayTodoCard({
   onDragStart,
   onDragOver,
   onDrop,
+  isSelectedFocus,
 }: {
   todo: Todo;
   onToggle: (id: number, completed: boolean) => void;
@@ -200,6 +207,7 @@ function TodayTodoCard({
   onDragStart?: (id: number, e: React.DragEvent<HTMLDivElement>) => void;
   onDragOver?: (id: number, e: React.DragEvent<HTMLDivElement>) => void;
   onDrop?: (id: number, e: React.DragEvent<HTMLDivElement>) => void;
+  isSelectedFocus?: boolean;
 }) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(todo.title);
@@ -230,9 +238,14 @@ function TodayTodoCard({
         e.preventDefault();
         onDrop?.(todo.id, e);
       }}
-      className={`bg-gray-800 border rounded-lg p-2.5 transition-all ${
-        todo.is_completed ? "border-gray-700 opacity-60" : "border-gray-600 cursor-move hover:border-blue-500/50"
+      className={`border rounded-lg p-2.5 transition-all ${
+        isSelectedFocus
+          ? "bg-cyan-900/30 border-cyan-500 ring-2 ring-cyan-500/40 cursor-move"
+          : todo.is_completed
+          ? "bg-gray-800 border-gray-700 opacity-60"
+          : "bg-gray-800 border-gray-600 cursor-move hover:border-blue-500/50"
       }`}
+      style={isSelectedFocus ? { boxShadow: "0 0 12px rgba(34, 211, 238, 0.3)" } : {}}
     >
       <div className="flex items-start gap-2">
         <input
@@ -304,7 +317,7 @@ function TodayTodoCard({
           {!todo.is_completed && (
             <button
               onClick={() => onSetFocus(todo)}
-              className="text-gray-600 hover:text-blue-400 text-xs"
+              className="text-gray-600 hover:text-blue-400 hover:bg-gray-700/50 text-lg px-2 py-1.5 rounded transition-colors"
               title="シングルフォーカスに設定"
             >
               🎯
@@ -368,7 +381,11 @@ function GeneratedTodoCard({
   );
 }
 
-export default function TodoList() {
+interface TodoListProps {
+  selectedFocusTask?: Todo | null;
+}
+
+export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
   const [masterTodos, setMasterTodos] = useState<Todo[]>([]);
   const [todayTodos, setTodayTodos] = useState<Todo[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1030,6 +1047,7 @@ export default function TodoList() {
                     onMoveToToday={handleMoveToToday}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    isSelectedFocus={selectedFocusTask?.id === todo.id}
                   />
                 ))
             )}
@@ -1388,13 +1406,13 @@ export default function TodoList() {
                       </div>
                       <div className="space-y-2">
                         {sectionTodos.map((todo) => {
-                          const isFocus = currentFocusTodo?.id === todo.id;
+                          const isSelected = selectedFocusTask?.id === todo.id;
                           return (
                             <div
                               key={todo.id}
-                              className={isFocus ? "ring-2 ring-cyan-500/60 rounded-lg" : ""}
+                              className={isSelected ? "ring-2 ring-cyan-500/60 rounded-lg" : ""}
                             >
-                              {isFocus && (
+                              {isSelected && (
                                 <div className="bg-cyan-900/40 rounded-t-lg px-2.5 py-1 flex items-center gap-1.5">
                                   <span className="text-cyan-400 text-[11px] font-bold animate-pulse">🎯</span>
                                   <span className="text-cyan-300 text-[11px] font-semibold">NOW — シングルフォーカス</span>
@@ -1411,6 +1429,7 @@ export default function TodoList() {
                                 onDragStart={handleTodoDragStart}
                                 onDragOver={handleTodoDragOver}
                                 onDrop={handleTodoDrop}
+                                isSelectedFocus={isSelected}
                               />
                             </div>
                           );
@@ -1442,6 +1461,7 @@ export default function TodoList() {
                             onDragStart={handleTodoDragStart}
                             onDragOver={handleTodoDragOver}
                             onDrop={handleTodoDrop}
+                            isSelectedFocus={selectedFocusTask?.id === todo.id}
                           />
                         ))}
                     </div>

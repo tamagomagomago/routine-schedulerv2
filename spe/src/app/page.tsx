@@ -308,7 +308,7 @@ export default function Home() {
 
             {/* TODO リスト */}
             <div ref={todoRef}>
-              <TodoList />
+              <TodoList selectedFocusTask={selectedFocusTask} />
             </div>
           </>
         )}
