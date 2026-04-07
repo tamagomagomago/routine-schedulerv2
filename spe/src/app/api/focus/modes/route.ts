@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
 
     // Return predefined modes if none exist
     const defaultModes = [
-      { id: 1, mode_name: "FOOH制作", color_hex: "#3b82f6" },
-      { id: 2, mode_name: "技術士勉強", color_hex: "#10b981" },
-      { id: 3, mode_name: "投資分析", color_hex: "#f59e0b" },
+      { id: 1, mode_name: "生成AI", color_hex: "#3b82f6" },
+      { id: 2, mode_name: "映像制作", color_hex: "#8b5cf6" },
+      { id: 3, mode_name: "技術士勉強", color_hex: "#10b981" },
     ];
 
     const finalModes = (modes && modes.length > 0) ? modes : defaultModes;

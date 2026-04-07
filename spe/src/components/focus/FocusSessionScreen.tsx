@@ -15,7 +15,7 @@ interface FocusSessionScreenProps {
 export default function FocusSessionScreen({ userId, onClose }: FocusSessionScreenProps) {
   const [state, setState] = useState<SessionState>("setup");
   const [modes, setModes] = useState<FocusMode[]>([]);
-  const [selectedMode, setSelectedMode] = useState<string>("FOOH制作");
+  const [selectedMode, setSelectedMode] = useState<string>("生成AI");
   const [targetMinutes, setTargetMinutes] = useState(25);
   const [customMinutes, setCustomMinutes] = useState(25);
   const [currentSession, setCurrentSession] = useState<FocusSession | null>(null);
@@ -38,7 +38,7 @@ export default function FocusSessionScreen({ userId, onClose }: FocusSessionScre
         console.log("Modes data:", data);
         if (data.modes) {
           setModes(data.modes);
-          setSelectedMode(data.modes[0]?.mode_name || "FOOH制作");
+          setSelectedMode(data.modes[0]?.mode_name || "生成AI");
         }
       } catch (e) {
         console.error("Failed to fetch modes:", e);
@@ -230,7 +230,7 @@ export default function FocusSessionScreen({ userId, onClose }: FocusSessionScre
                       const data = await res.json();
                       if (data.modes) {
                         setModes(data.modes);
-                        setSelectedMode(data.modes[0]?.mode_name || "FOOH制作");
+                        setSelectedMode(data.modes[0]?.mode_name || "生成AI");
                       }
                     }
                   } catch (e) {
@@ -243,9 +243,9 @@ export default function FocusSessionScreen({ userId, onClose }: FocusSessionScre
 
             {/* Selected Task Display */}
             {selectedTask ? (
-              <div className="mt-6 bg-blue-600/20 border-2 border-blue-500 rounded-lg p-3">
-                <p className="text-xs text-blue-300 mb-1">🎯 シングルフォーカス対象</p>
-                <p className="text-sm font-semibold text-blue-100 truncate">
+              <div className="mt-6 bg-cyan-600/20 border-2 border-cyan-400 rounded-lg p-3">
+                <p className="text-xs text-cyan-300 mb-1">🎯 シングルフォーカス対象</p>
+                <p className="text-sm font-semibold text-cyan-100 truncate">
                   {selectedTask.title}
                 </p>
               </div>
@@ -327,10 +327,10 @@ export default function FocusSessionScreen({ userId, onClose }: FocusSessionScre
 
             {/* Selected Focus Task */}
             {selectedTask && (
-              <div className="bg-red-600/20 border border-red-500/50 rounded-lg p-3 mb-4">
-                <p className="text-xs text-red-300 mb-1">🎯 フォーカスタスク</p>
-                <p className="text-sm font-semibold text-red-100">{selectedTask.title}</p>
-                <p className="text-xs text-red-200/70">{selectedTask.estimated_minutes}分</p>
+              <div className="bg-cyan-600/20 border-2 border-cyan-400 rounded-lg p-3 mb-4">
+                <p className="text-xs text-cyan-300 mb-1">🎯 フォーカスタスク</p>
+                <p className="text-sm font-semibold text-cyan-100">{selectedTask.title}</p>
+                <p className="text-xs text-cyan-200/70">{selectedTask.estimated_minutes}分</p>
               </div>
             )}
 
