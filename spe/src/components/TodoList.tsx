@@ -369,10 +369,11 @@ export default function TodoList() {
   const [form, setForm] = useState<CreateTodoInput>(emptyForm());
   const [editId, setEditId] = useState<number | null>(null);
   const [customCat, setCustomCat] = useState(false);
-  const [showWeeklyList, setShowWeeklyList] = useState(true);
+  const [showWeeklyList, setShowWeeklyList] = useState(false);
   const [showTodayAddForm, setShowTodayAddForm] = useState(false);
   const [todayFormCat, setTodayFormCat] = useState<string>("personal");
   const [todayFormCustomCat, setTodayFormCustomCat] = useState(false);
+  const [todayFormStartTime, setTodayFormStartTime] = useState<string>("");
   const [currentTab, setCurrentTab] = useState<"weekly" | "today">("weekly");
   const [sortByDue, setSortByDue] = useState(false);
 
@@ -1163,6 +1164,16 @@ export default function TodoList() {
                     ))}
                   </div>
                 </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-0.5 block">実行時間（HH:MM、任意）</label>
+                  <input
+                    type="time"
+                    value={todayFormStartTime}
+                    onChange={(e) => setTodayFormStartTime(e.target.value)}
+                    className="w-full bg-gray-700 text-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-0.5">指定した時間でタイムラインに配置します</p>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={async () => {
@@ -1175,10 +1186,52 @@ export default function TodoList() {
                           body: JSON.stringify({ ...form, is_today: true }),
                         });
                         if (res.ok) {
+                          const newTodo = await res.json();
+
+                          // If start time is specified, create a custom block in daily_plans
+                          if (todayFormStartTime && newTodo.id) {
+                            const today = new Date().toISOString().split("T")[0];
+                            const startTime = todayFormStartTime;
+                            const [startHour, startMin] = startTime.split(":").map(Number);
+                            const endMin = startMin + form.estimated_minutes;
+                            const endHour = startHour + Math.floor(endMin / 60);
+                            const endTime = `${String(endHour % 24).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+
+                            // Get existing plan data
+                            const planRes = await fetch(`/api/plans?date=${today}`);
+                            const existingPlan = await planRes.json();
+                            const customBlocks = existingPlan?.custom_blocks ?? [];
+
+                            // Add new custom block
+                            const newCustomBlock = {
+                              id: `todo-${newTodo.id}`,
+                              start_time: startTime,
+                              end_time: endTime,
+                              title: form.title,
+                              type: "task" as const,
+                              duration_minutes: form.estimated_minutes,
+                              todo_id: newTodo.id,
+                            };
+
+                            // Save updated plan
+                            await fetch("/api/plans", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                date: today,
+                                plan_text: existingPlan?.plan_text ?? "",
+                                ai_blocks: existingPlan?.ai_blocks ?? [],
+                                slot_notes: existingPlan?.slot_notes ?? {},
+                                custom_blocks: [...customBlocks, newCustomBlock],
+                              }),
+                            });
+                          }
+
                           await fetchTodos();
                           setShowTodayAddForm(false);
                           setForm(emptyForm());
                           setTodayFormCustomCat(false);
+                          setTodayFormStartTime("");
                         }
                       } finally {
                         setLoading(false);
@@ -1194,6 +1247,7 @@ export default function TodoList() {
                       setShowTodayAddForm(false);
                       setForm(emptyForm());
                       setTodayFormCustomCat(false);
+                      setTodayFormStartTime("");
                     }}
                     className="flex-1 py-1.5 bg-gray-700 text-gray-300 rounded text-xs transition-colors hover:bg-gray-600"
                   >

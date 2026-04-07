@@ -2,9 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "dev",
+      "name": "spe-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "cwd": "spe",
       "autoPort": true
     }
   ]

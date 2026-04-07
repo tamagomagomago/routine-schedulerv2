@@ -22,13 +22,13 @@ export default function FocusTaskSelector({
       setLoading(true);
       try {
         const today = new Date().toISOString().split("T")[0];
-        const res = await fetch("/api/todos");
+        const res = await fetch(`/api/todos?is_today=true`);
         if (!res.ok) throw new Error("Failed to fetch todos");
-        const data = await res.json();
+        const todos = await res.json();
 
         // 今日のTODOで優先度が「高」（priority === 1）のもの
-        const highPriority = (data.todos || []).filter(
-          (t: Todo) => t.is_today && t.priority === 1 && !t.is_completed
+        const highPriority = (Array.isArray(todos) ? todos : []).filter(
+          (t: Todo) => t.priority === 1 && !t.is_completed
         );
         setTodayHighPriorityTodos(highPriority);
       } catch (error) {
