@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Goal, CreateGoalInput, GoalCategory, PeriodType } from "@/types";
+import OKRDecomposer from "./OKRDecomposer";
 
 const CATEGORY_EMOJI: Record<GoalCategory, string> = {
   fitness: "💪",
@@ -599,6 +600,7 @@ export default function GoalPanel() {
   const [open, setOpen] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<CreateGoalInput>(EMPTY_FORM);
+  const [expandedDecomposer, setExpandedDecomposer] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -989,13 +991,37 @@ export default function GoalPanel() {
                           </p>
                           {children.map((monthly) => {
                             const weeklyChildren = getWeeklyForMonthly(monthly.id);
+                            const isExpanded = expandedDecomposer === monthly.id;
                             return (
                               <div key={monthly.id}>
-                                <VisualGoalCard
-                                  goal={monthly}
-                                  onEdit={handleEdit}
-                                  onDelete={handleDelete}
-                                />
+                                <div className="flex items-center gap-2 mb-2">
+                                  <VisualGoalCard
+                                    goal={monthly}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                  />
+                                  <button
+                                    onClick={() =>
+                                      setExpandedDecomposer(isExpanded ? null : monthly.id)
+                                    }
+                                    className="text-xs px-2 py-1 rounded bg-purple-900/40 hover:bg-purple-800/60 text-purple-300 border border-purple-700/50 transition-colors whitespace-nowrap"
+                                  >
+                                    {isExpanded ? "▲ 分解" : "▼ 分解"}
+                                  </button>
+                                </div>
+
+                                {isExpanded && (
+                                  <div className="ml-4 mt-2 mb-2">
+                                    <OKRDecomposer
+                                      goal={monthly}
+                                      onDecomposed={() => {
+                                        setExpandedDecomposer(null);
+                                        fetchGoals();
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
                                 {/* 紐づく週次目標 */}
                                 {weeklyChildren.length > 0 && (
                                   <div className="ml-4 mt-2 space-y-2 border-l-2 border-green-800/40 pl-3">
@@ -1033,13 +1059,37 @@ export default function GoalPanel() {
               <div className="space-y-3">
                 {orphanMonthly.map((monthly) => {
                   const weeklyChildren = getWeeklyForMonthly(monthly.id);
+                  const isExpanded = expandedDecomposer === monthly.id;
                   return (
                     <div key={monthly.id}>
-                      <VisualGoalCard
-                        goal={monthly}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                      />
+                      <div className="flex items-center gap-2 mb-2">
+                        <VisualGoalCard
+                          goal={monthly}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                        />
+                        <button
+                          onClick={() =>
+                            setExpandedDecomposer(isExpanded ? null : monthly.id)
+                          }
+                          className="text-xs px-2 py-1 rounded bg-purple-900/40 hover:bg-purple-800/60 text-purple-300 border border-purple-700/50 transition-colors whitespace-nowrap"
+                        >
+                          {isExpanded ? "▲ 分解" : "▼ 分解"}
+                        </button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="ml-4 mt-2 mb-2">
+                          <OKRDecomposer
+                            goal={monthly}
+                            onDecomposed={() => {
+                              setExpandedDecomposer(null);
+                              fetchGoals();
+                            }}
+                          />
+                        </div>
+                      )}
+
                       {weeklyChildren.length > 0 && (
                         <div className="ml-4 mt-2 space-y-2 border-l-2 border-green-800/40 pl-3">
                           <p className="text-xs text-green-400 font-semibold mb-1">

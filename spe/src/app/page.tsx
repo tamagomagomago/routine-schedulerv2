@@ -18,6 +18,7 @@ import DailyRoutinePanel from "@/components/DailyRoutinePanel";
 import TodoTimer, { ActiveTimer } from "@/components/TodoTimer";
 import TimeStatsPanel from "@/components/TimeStatsPanel";
 import ShoppingListPanel from "@/components/ShoppingListPanel";
+import WeeklyTasksDisplay from "@/components/WeeklyTasksDisplay";
 
 const TIMER_LS_KEY = "spe-active-timer";
 
@@ -310,6 +311,11 @@ export default function Home() {
             {/* TODO リスト */}
             <div ref={todoRef}>
               <TodoList selectedFocusTask={selectedFocusTask} />
+            </div>
+
+            {/* 週間タスク表示 */}
+            <div className="mt-6">
+              <WeeklyTasksDisplay />
             </div>
           </>
         )}
