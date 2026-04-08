@@ -29,6 +29,8 @@ export async function POST(req: Request) {
 
     // 新しいタスクを作成
     const weeklyTasks = [];
+    const monthlyTodos = [];
+
     for (const weeklyBreakdown of decomposition.weeklyBreakdowns) {
       for (const task of weeklyBreakdown.tasks) {
         const { data: insertedTask, error: taskError } = await supabase
@@ -66,6 +68,27 @@ export async function POST(req: Request) {
         }
 
         weeklyTasks.push(insertedTask?.[0]);
+
+        // Monthly TODO を生成（マスターリストに追加）
+        const monthlyTodoTitle = `${goal.title} - ${task.category} (W${weeklyBreakdown.week})`;
+        const { data: todoData, error: todoError } = await supabase
+          .from("todos")
+          .insert({
+            title: monthlyTodoTitle,
+            description: `目標: ${goal.title}\nカテゴリ: ${task.category}\nタスク: ${task.subtasks.join(", ")}\n[Goal ID: ${goal_id}]`,
+            priority: 3,
+            estimated_minutes: task.allocated_minutes,
+            category: task.category,
+            is_today: false,
+            preferred_time: null,
+            due_date: null, // マスターリスト用（期限は後から設定）
+          })
+          .select();
+
+        if (todoError) throw todoError;
+        if (todoData && todoData[0]) {
+          monthlyTodos.push(todoData[0]);
+        }
       }
     }
 
@@ -82,6 +105,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       weeklyTasks,
+      monthlyTodos,
       summary: decomposition.summary,
     });
   } catch (err) {

@@ -122,6 +122,21 @@ function isDeadlineSoon(dueDate: string | null | undefined): boolean {
   return daysLeft >= 0 && daysLeft <= 2;
 }
 
+// 今週判定：due_date が今週の月曜～日曜か
+function isThisWeek(dueDate: string | null | undefined): boolean {
+  if (!dueDate) return false;
+  const due = new Date(dueDate);
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return due >= monday && due <= sunday;
+}
+
 // ミニTODOカード（マスターリスト用）
 function MasterTodoCard({
   todo,
@@ -841,7 +856,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                 : "bg-gray-700 text-gray-300 border border-gray-600 hover:bg-gray-600"
             }`}
           >
-            📅 今週のTODO ({masterTodos.filter(t => !t.is_completed).length}件)
+            📅 今週のTODO ({masterTodos.filter(t => !t.is_completed && isThisWeek(t.due_date)).length}件)
           </button>
           <button
             onClick={() => setCurrentTab("today")}
@@ -1103,32 +1118,71 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
 
           {/* マスターリスト */}
           <div className="px-3 pb-3 space-y-2 flex-1">
-            {masterTodos.filter((t) => !t.is_completed).length === 0 ? (
-              <p className="text-gray-600 text-xs text-center py-4">
-                マスターリストにTODOがありません
-              </p>
-            ) : (
-              masterTodos
-                .filter((t) => !t.is_completed)
-                .sort((a, b) => {
-                  if (!sortByDue) return 0; // 通常順
-                  // 期限でソート：期限ありを上に、期限なしを下に
+            {(() => {
+              const incompleteTodos = masterTodos.filter((t) => !t.is_completed);
+              const weeklyTodos = incompleteTodos.filter((t) => isThisWeek(t.due_date));
+              const masterListTodos = incompleteTodos.filter((t) => !isThisWeek(t.due_date));
+
+              if (incompleteTodos.length === 0) {
+                return (
+                  <p className="text-gray-600 text-xs text-center py-4">
+                    TODOがありません
+                  </p>
+                );
+              }
+
+              const sortTodos = (todos: Todo[]) => {
+                return todos.sort((a, b) => {
+                  if (!sortByDue) return 0;
                   if (!a.due_date && !b.due_date) return 0;
                   if (!a.due_date) return 1;
                   if (!b.due_date) return -1;
                   return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-                })
-                .map((todo) => (
-                  <MasterTodoCard
-                    key={todo.id}
-                    todo={todo}
-                    onMoveToToday={handleMoveToToday}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    isSelectedFocus={selectedFocusTask?.id === todo.id}
-                  />
-                ))
-            )}
+                });
+              };
+
+              return (
+                <>
+                  {/* 今週のTODO */}
+                  {weeklyTodos.length > 0 && (
+                    <div>
+                      <p className="text-xs text-green-400 font-semibold mb-1.5">📅 今週のTODO</p>
+                      <div className="space-y-2">
+                        {sortTodos(weeklyTodos).map((todo) => (
+                          <MasterTodoCard
+                            key={todo.id}
+                            todo={todo}
+                            onMoveToToday={handleMoveToToday}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            isSelectedFocus={selectedFocusTask?.id === todo.id}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* マスターリスト */}
+                  {masterListTodos.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-semibold mb-1.5">📋 マスターリスト</p>
+                      <div className="space-y-2">
+                        {sortTodos(masterListTodos).map((todo) => (
+                          <MasterTodoCard
+                            key={todo.id}
+                            todo={todo}
+                            onMoveToToday={handleMoveToToday}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            isSelectedFocus={selectedFocusTask?.id === todo.id}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {/* 完了済みアーカイブ */}
             {masterTodos.filter((t) => t.is_completed).length > 0 && (
               <details className="mt-2">

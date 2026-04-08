@@ -28,10 +28,16 @@ function addMinutes(time: string, minutes: number): string {
 function getMorningRoutine(wakeTime: string, dayType: DayType): RoutineItem[] {
   const exercise = MORNING_EXERCISE[new Date().getDay()];
   const t0 = wakeTime;
+
+  // 起床時刻が07:00より前なら朝食を含める（早起きできた場合）
+  const isEarlyWake = wakeTime < "07:00";
+
+  // 朝食の有無に応じてタイムラインを調整
   const t1 = addMinutes(t0, 5);   // プロテイン開始（起床5分後）
   const t2 = addMinutes(t0, 10);  // ダンベルトレ開始（プロテイン5分）
-  const t3 = addMinutes(t0, 30);  // 朝ごはん開始（トレ20分）
-  const t4 = addMinutes(t0, 45);  // ディープワーク開始（朝ごはん15分）
+  const t3 = isEarlyWake ? addMinutes(t0, 30) : addMinutes(t0, 25);  // トレ後（朝食あり：20分、なし：15分）
+  const t4 = isEarlyWake ? addMinutes(t0, 45) : addMinutes(t0, 40);  // ディープワーク開始
+
   // 平日・残業は08:30まで深作業、休日は12:00まで
   const deepEnd = dayType === "holiday" ? "12:00" : "08:30";
 
@@ -39,9 +45,19 @@ function getMorningRoutine(wakeTime: string, dayType: DayType): RoutineItem[] {
     { time: `${t0}〜${t1}`, title: "起床・水1杯・朝日を浴びる" },
     { time: `${t1}〜${t2}`, title: "🥛 プロテイン" },
     { time: `${t2}〜${t3}`, title: `💪 ダンベルトレ — ${exercise}` },
-    { time: `${t3}〜${t4}`, title: "🍳 朝ごはん・エビオス・身支度準備完了" },
-    { time: `${t4}〜${deepEnd}`, title: "⚡ ディープワーク（出勤前集中時間）" },
   ];
+
+  // 早起きできた場合のみ朝食を追加
+  if (isEarlyWake) {
+    items.push(
+      { time: `${t3}〜${t4}`, title: "🍳 朝ごはん・エビオス・身支度準備完了" }
+    );
+  }
+
+  items.push(
+    { time: `${t4}〜${deepEnd}`, title: "⚡ ディープワーク（出勤前集中時間）" }
+  );
+
   // 平日・残業のみ通勤ブロックを追加
   if (dayType !== "holiday") {
     items.push(
