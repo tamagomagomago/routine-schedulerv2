@@ -472,6 +472,7 @@ interface TodoListProps {
 export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
   const [masterTodos, setMasterTodos] = useState<Todo[]>([]);
   const [todayTodos, setTodayTodos] = useState<Todo[]>([]);
+  const [weeklyGoals, setWeeklyGoals] = useState<any[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState<CreateTodoInput>(emptyForm());
   const [editId, setEditId] = useState<number | null>(null);
@@ -597,6 +598,23 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
         setTodoOrderMap({});
       }
     } catch {}
+  }, []);
+
+  // 週別目標をフェッチ
+  useEffect(() => {
+    const fetchWeeklyGoals = async () => {
+      try {
+        const res = await fetch("/api/goals");
+        if (res.ok) {
+          const data = await res.json();
+          const weekly = Array.isArray(data) ? data.filter((g: any) => g.period_type === "weekly") : [];
+          setWeeklyGoals(weekly);
+        }
+      } catch (err) {
+        console.error("Failed to fetch weekly goals:", err);
+      }
+    };
+    fetchWeeklyGoals();
   }, []);
 
   // フォーム送信
@@ -1593,6 +1611,43 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
               </div>
             )}
           </div>
+
+          {/* 今週の目標進捗 */}
+          {weeklyGoals.length > 0 && (
+            <div className="px-3 py-3 border-b border-gray-800">
+              <p className="text-xs font-semibold text-green-400 mb-2">📊 今週の目標進捗</p>
+              <div className="space-y-2">
+                {weeklyGoals.map((goal) => {
+                  const progress = goal.target_value ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100)) : 0;
+                  return (
+                    <div key={goal.id} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-300 truncate">
+                          {goal.title}
+                        </span>
+                        <span className="text-xs text-gray-500 shrink-0 ml-1">
+                          {goal.current_value ?? 0}/{goal.target_value ?? "?"}{goal.unit ?? ""}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            progress >= 80
+                              ? "bg-green-500"
+                              : progress >= 40
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                          }`}
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <div className="text-right text-xs text-gray-600">{progress}%</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="px-3 py-2 flex-1">
             {todayTodos.length === 0 ? (
