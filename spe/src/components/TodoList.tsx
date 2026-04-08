@@ -103,6 +103,7 @@ function getCatEmoji(cat: string): string {
 function emptyForm(): CreateTodoInput {
   return {
     title: "",
+    description: "",
     priority: 3,
     estimated_minutes: 30,
     category: "personal",
@@ -136,6 +137,7 @@ function MasterTodoCard({
   isSelectedFocus?: boolean;
 }) {
   const [isChecked, setIsChecked] = useState(false);
+  const [showDesc, setShowDesc] = useState(false);
 
   const handleCheckChange = (checked: boolean) => {
     setIsChecked(checked);
@@ -173,6 +175,21 @@ function MasterTodoCard({
               </span>
             )}
           </div>
+          {todo.description && (
+            <div className="mt-1.5">
+              <button
+                onClick={() => setShowDesc(!showDesc)}
+                className="text-xs text-gray-500 hover:text-gray-300"
+              >
+                {showDesc ? "▲" : "▼"} 補足
+              </button>
+              {showDesc && (
+                <p className="text-xs text-gray-400 mt-1 p-1.5 bg-gray-900/40 rounded border border-gray-700">
+                  {todo.description}
+                </p>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1 shrink-0">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -443,6 +460,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
   const [aiLoading, setAiLoading] = useState(false);
   const [generatedTodos, setGeneratedTodos] = useState<GeneratedTodo[]>([]);
   const [showAiInput, setShowAiInput] = useState(false);
+  const [showDescription, setShowDescription] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -569,6 +587,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
         setForm(emptyForm());
         setEditId(null);
         setCustomCat(false);
+        setShowDescription(false);
       }
     } finally {
       setLoading(false);
@@ -629,6 +648,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
     setCustomCat(isCustom);
     setForm({
       title: todo.title,
+      description: todo.description ?? undefined,
       priority: todo.priority,
       estimated_minutes: todo.estimated_minutes,
       category: todo.category,
@@ -924,6 +944,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                 setForm(emptyForm());
                 setEditId(null);
                 setCustomCat(false);
+                setShowDescription(false);
                 setShowAddForm((v) => !v);
               }}
               className="w-full py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-medium transition-colors"
@@ -1037,6 +1058,24 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                     className="w-full bg-gray-700 text-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
                 </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDescription(!showDescription)}
+                    className="text-xs text-gray-500 hover:text-gray-300 mb-1"
+                  >
+                    {showDescription ? "▲ 補足を非表示" : "▼ 補足を追加"}
+                  </button>
+                  {showDescription && (
+                    <textarea
+                      placeholder="補足・詳細（任意）"
+                      value={form.description || ""}
+                      onChange={(e) => setForm({ ...form, description: e.target.value || undefined })}
+                      rows={3}
+                      className="w-full bg-gray-700 text-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
+                    />
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={handleSubmit}
@@ -1051,6 +1090,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                       setEditId(null);
                       setForm(emptyForm());
                       setCustomCat(false);
+                      setShowDescription(false);
                     }}
                     className="flex-1 py-1.5 bg-gray-700 text-gray-300 rounded text-xs transition-colors hover:bg-gray-600"
                   >
@@ -1207,8 +1247,10 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
           <div className="px-3 py-2 border-b border-gray-800">
             <button
               onClick={() => {
+                setForm(emptyForm());
                 setTodayFormCat("personal");
                 setTodayFormCustomCat(false);
+                setShowDescription(false);
                 setShowTodayAddForm((v) => !v);
               }}
               className="w-full py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-medium transition-colors"
@@ -1322,6 +1364,24 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                   />
                   <p className="text-[10px] text-gray-600 mt-0.5">指定した時間でタイムラインに配置します</p>
                 </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDescription(!showDescription)}
+                    className="text-xs text-gray-500 hover:text-gray-300 mb-1"
+                  >
+                    {showDescription ? "▲ 補足を非表示" : "▼ 補足を追加"}
+                  </button>
+                  {showDescription && (
+                    <textarea
+                      placeholder="補足・詳細（任意）"
+                      value={form.description || ""}
+                      onChange={(e) => setForm({ ...form, description: e.target.value || undefined })}
+                      rows={3}
+                      className="w-full bg-gray-700 text-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
+                    />
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={async () => {
@@ -1381,6 +1441,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                           setForm(emptyForm());
                           setTodayFormCustomCat(false);
                           setTodayFormStartTime("");
+                          setShowDescription(false);
                         }
                       } finally {
                         setLoading(false);
@@ -1397,6 +1458,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                       setForm(emptyForm());
                       setTodayFormCustomCat(false);
                       setTodayFormStartTime("");
+                      setShowDescription(false);
                     }}
                     className="flex-1 py-1.5 bg-gray-700 text-gray-300 rounded text-xs transition-colors hover:bg-gray-600"
                   >
