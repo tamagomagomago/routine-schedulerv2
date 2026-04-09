@@ -84,6 +84,7 @@ export interface Goal {
   description?: string | null;
   category: GoalCategory;
   period_type: PeriodType;
+  parent_id?: number | null; // 親目標ID（年間→月次→週次の階層）
   target_value?: number | null;
   current_value: number;
   unit?: string | null;
@@ -101,6 +102,7 @@ export interface CreateGoalInput {
   description?: string;
   category: GoalCategory | string; // カスタムカテゴリ対応
   period_type: PeriodType;
+  parent_id?: number | null; // 親目標ID
   target_value?: number;
   current_value?: number;
   unit?: string;
