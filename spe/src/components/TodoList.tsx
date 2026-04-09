@@ -137,6 +137,67 @@ function isThisWeek(dueDate: string | null | undefined): boolean {
   return due >= monday && due <= sunday;
 }
 
+// 今週の開始日・終了日を返す
+function getThisWeekRange(): { monday: Date; sunday: Date } {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return { monday, sunday };
+}
+
+// 目標の期間が今週と重なるか
+function isThisWeekGoal(goal: any): boolean {
+  const { monday, sunday } = getThisWeekRange();
+  const start = new Date(goal.start_date);
+  const end = new Date(goal.end_date);
+  return start <= sunday && end >= monday;
+}
+
+// 目標の期間が今月と重なるか
+function isThisMonthGoal(goal: any): boolean {
+  const today = new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+  const start = new Date(goal.start_date);
+  const end = new Date(goal.end_date);
+  return start <= monthEnd && end >= monthStart;
+}
+
+// 月のキー（"YYYY-MM"形式）
+function getMonthKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// 月の表示ラベル（今月/n月）
+function getMonthLabel(monthKey: string): string {
+  const today = new Date();
+  const thisKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  if (monthKey === thisKey) return "今月";
+  const [, m] = monthKey.split("-");
+  return `${parseInt(m)}月`;
+}
+
+// 週の範囲ラベル（n月n日〜n日）
+function getWeekRangeLabel(startDate: string, endDate: string): string {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const today = new Date();
+  const { monday, sunday } = getThisWeekRange();
+  const isCurrentWeek =
+    start <= sunday && end >= monday;
+  const prefix = isCurrentWeek ? "今週 " : "";
+  const sm = start.getMonth() + 1;
+  const sd = start.getDate();
+  const ed = end.getDate();
+  return `${prefix}${sm}月${sd}日〜${ed}日`;
+}
+
 // ミニTODOカード（マスターリスト用）
 function MasterTodoCard({
   todo,
@@ -463,8 +524,8 @@ function AnnualGoalItem({
   isExpanded: boolean;
   onToggle: () => void;
   allGoals: any[];
-  expandedGoals: Record<number, boolean>;
-  setExpandedGoals: (fn: (prev: Record<number, boolean>) => Record<number, boolean>) => void;
+  expandedGoals: Record<string, boolean>;
+  setExpandedGoals: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
 }) {
   const progress = goal.target_value ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100)) : 0;
   const barColor = progress >= 80 ? "bg-purple-500" : progress >= 40 ? "bg-yellow-500" : "bg-red-500";
@@ -518,8 +579,8 @@ function MonthlyGoalItem({
   isExpanded: boolean;
   onToggle: () => void;
   allGoals: any[];
-  expandedGoals: Record<number, boolean>;
-  setExpandedGoals: (fn: (prev: Record<number, boolean>) => Record<number, boolean>) => void;
+  expandedGoals: Record<string, boolean>;
+  setExpandedGoals: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
 }) {
   const progress = goal.target_value ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100)) : 0;
   const barColor = progress >= 80 ? "bg-blue-500" : progress >= 40 ? "bg-yellow-500" : "bg-red-500";
@@ -619,7 +680,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
   const [todayTodos, setTodayTodos] = useState<Todo[]>([]);
   const [weeklyGoals, setWeeklyGoals] = useState<any[]>([]);
   const [allGoals, setAllGoals] = useState<any[]>([]);
-  const [expandedGoals, setExpandedGoals] = useState<Record<number, boolean>>({});
+  const [expandedGoals, setExpandedGoals] = useState<Record<string, boolean>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState<CreateTodoInput>(emptyForm());
   const [editId, setEditId] = useState<number | null>(null);
@@ -1057,16 +1118,6 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
         {/* タブ */}
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => setCurrentTab("weekly")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              currentTab === "weekly"
-                ? "bg-blue-700 text-white border border-blue-600"
-                : "bg-gray-700 text-gray-300 border border-gray-600 hover:bg-gray-600"
-            }`}
-          >
-            📅 今週のTODO ({masterTodos.filter(t => !t.is_completed && isThisWeek(t.due_date)).length}件)
-          </button>
-          <button
             onClick={() => setCurrentTab("today")}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               currentTab === "today"
@@ -1075,6 +1126,16 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
             }`}
           >
             📅 今日のTODO ({todayTodos.filter(t => !t.is_completed).length}件)
+          </button>
+          <button
+            onClick={() => setCurrentTab("weekly")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              currentTab === "weekly"
+                ? "bg-blue-700 text-white border border-blue-600"
+                : "bg-gray-700 text-gray-300 border border-gray-600 hover:bg-gray-600"
+            }`}
+          >
+            📋 タスクリスト ({masterTodos.filter(t => !t.is_completed).length}件)
           </button>
           <button
             onClick={() => setCurrentTab("goals")}
@@ -1091,9 +1152,38 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
 
       {/* タブコンテンツ */}
       <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 180px)" }}>
-        {/* ===== 今週のTODO タブ ===== */}
+        {/* ===== タスクリスト タブ ===== */}
         {currentTab === "weekly" && (
         <div className="flex flex-col h-full">
+          {/* 今週の進捗（週次目標） */}
+          {(() => {
+            const thisWeekGoals = allGoals.filter(g => g.period_type === "weekly" && isThisWeekGoal(g));
+            if (thisWeekGoals.length === 0) return null;
+            return (
+              <div className="px-3 py-3 border-b border-gray-800">
+                <p className="text-xs font-semibold text-green-400 mb-2">📊 今週の進捗</p>
+                <div className="space-y-2">
+                  {thisWeekGoals.map((goal) => {
+                    const progress = goal.target_value ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100)) : 0;
+                    const barColor = progress >= 80 ? "bg-green-500" : progress >= 40 ? "bg-yellow-500" : "bg-red-500";
+                    return (
+                      <div key={goal.id} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-300 truncate">{goal.title}</span>
+                          <span className="text-xs text-gray-500 shrink-0 ml-1">{goal.current_value ?? 0}/{goal.target_value ?? "?"}{goal.unit ?? ""}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                          <div className={`h-full transition-all duration-300 ${barColor}`} style={{ width: `${progress}%` }} />
+                        </div>
+                        <div className="text-right text-xs text-gray-600">{progress}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="px-3 py-2 border-b border-gray-800">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -1890,7 +1980,7 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                 <span className="text-xs text-gray-600">({allGoals.length}件)</span>
               </div>
             </div>
-            <div className="px-3 py-3 flex-1 overflow-y-auto space-y-3">
+            <div className="px-3 py-3 flex-1 overflow-y-auto space-y-4">
               {allGoals.length === 0 ? (
                 <div className="text-center py-6">
                   <p className="text-gray-600 text-xs">目標がまだありません</p>
@@ -1898,13 +1988,14 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                 </div>
               ) : (
                 <>
+                  {/* ── 年間目標 ── */}
                   {(() => {
                     const annualGoals = allGoals.filter(g => g.period_type === "annual");
                     if (annualGoals.length === 0) return null;
                     return (
                       <div>
                         <p className="text-xs font-semibold text-purple-400 mb-2">📊 年間目標</p>
-                        <div className="space-y-2 ml-2">
+                        <div className="space-y-2">
                           {annualGoals.map((goal) => (
                             <AnnualGoalItem
                               key={goal.id}
@@ -1916,6 +2007,151 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
                               setExpandedGoals={setExpandedGoals}
                             />
                           ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── 月間目標 ── */}
+                  {(() => {
+                    const monthlyGoals = allGoals.filter(g => g.period_type === "monthly");
+                    if (monthlyGoals.length === 0) return null;
+
+                    // 月ごとにグループ化
+                    const byMonth: Record<string, any[]> = {};
+                    monthlyGoals.forEach(g => {
+                      const key = getMonthKey(g.start_date);
+                      if (!byMonth[key]) byMonth[key] = [];
+                      byMonth[key].push(g);
+                    });
+
+                    // 今月を先頭にソート
+                    const today = new Date();
+                    const thisMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+                    const sortedMonths = Object.keys(byMonth).sort((a, b) => {
+                      if (a === thisMonthKey) return -1;
+                      if (b === thisMonthKey) return 1;
+                      return b.localeCompare(a);
+                    });
+
+                    return (
+                      <div>
+                        <p className="text-xs font-semibold text-blue-400 mb-2">📌 月間目標</p>
+                        <div className="space-y-2">
+                          {sortedMonths.map(monthKey => {
+                            const isExpanded = expandedGoals[`month-${monthKey}`] ?? (monthKey === thisMonthKey);
+                            const goals = byMonth[monthKey];
+                            const label = getMonthLabel(monthKey);
+                            const isThisMonth = monthKey === thisMonthKey;
+                            return (
+                              <div key={monthKey} className="border border-gray-700 rounded-lg">
+                                <button
+                                  onClick={() => setExpandedGoals(prev => ({ ...prev, [`month-${monthKey}`]: !isExpanded }))}
+                                  className="w-full flex items-center justify-between px-3 py-2 text-left"
+                                >
+                                  <span className={`text-xs font-medium ${isThisMonth ? "text-blue-300" : "text-gray-400"}`}>
+                                    {isThisMonth ? "📍 " : ""}{label}
+                                    <span className="text-gray-600 font-normal ml-1">({goals.length}件)</span>
+                                  </span>
+                                  <span className="text-gray-500 text-xs">{isExpanded ? "▼" : "▶"}</span>
+                                </button>
+                                {isExpanded && (
+                                  <div className="px-3 pb-2 space-y-2 border-t border-gray-800">
+                                    {goals.map(goal => {
+                                      const progress = goal.target_value ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100)) : 0;
+                                      const barColor = progress >= 80 ? "bg-blue-500" : progress >= 40 ? "bg-yellow-500" : "bg-red-500";
+                                      return (
+                                        <div key={goal.id} className="pt-2 space-y-1">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-xs text-gray-300 truncate">{goal.title}</span>
+                                            <span className="text-xs text-gray-500 shrink-0 ml-1">{goal.current_value ?? 0}/{goal.target_value ?? "?"}{goal.unit ?? ""}</span>
+                                          </div>
+                                          <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                            <div className={`h-full transition-all duration-300 ${barColor}`} style={{ width: `${progress}%` }} />
+                                          </div>
+                                          <div className="text-right text-xs text-gray-600">{progress}%</div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── 週間目標 ── */}
+                  {(() => {
+                    const weeklyGoals = allGoals.filter(g => g.period_type === "weekly");
+                    if (weeklyGoals.length === 0) return null;
+
+                    // 週ごとにグループ化（start_dateで）
+                    const byWeek: Record<string, any[]> = {};
+                    weeklyGoals.forEach(g => {
+                      const key = g.start_date;
+                      if (!byWeek[key]) byWeek[key] = [];
+                      byWeek[key].push(g);
+                    });
+
+                    // 今週を先頭にソート（降順）
+                    const { monday } = getThisWeekRange();
+                    const thisWeekKey = monday.toISOString().split("T")[0];
+                    const sortedWeeks = Object.keys(byWeek).sort((a, b) => {
+                      const aIsThis = isThisWeekGoal({ start_date: a, end_date: byWeek[a][0].end_date });
+                      const bIsThis = isThisWeekGoal({ start_date: b, end_date: byWeek[b][0].end_date });
+                      if (aIsThis) return -1;
+                      if (bIsThis) return 1;
+                      return b.localeCompare(a);
+                    });
+
+                    return (
+                      <div>
+                        <p className="text-xs font-semibold text-green-400 mb-2">📅 週間目標</p>
+                        <div className="space-y-2">
+                          {sortedWeeks.map(weekStartKey => {
+                            const goals = byWeek[weekStartKey];
+                            const sampleGoal = goals[0];
+                            const isThisW = isThisWeekGoal(sampleGoal);
+                            const isExpanded = expandedGoals[`week-${weekStartKey}`] ?? isThisW;
+                            const weekLabel = getWeekRangeLabel(sampleGoal.start_date, sampleGoal.end_date);
+                            return (
+                              <div key={weekStartKey} className="border border-gray-700 rounded-lg">
+                                <button
+                                  onClick={() => setExpandedGoals(prev => ({ ...prev, [`week-${weekStartKey}`]: !isExpanded }))}
+                                  className="w-full flex items-center justify-between px-3 py-2 text-left"
+                                >
+                                  <span className={`text-xs font-medium ${isThisW ? "text-green-300" : "text-gray-400"}`}>
+                                    {weekLabel}
+                                    <span className="text-gray-600 font-normal ml-1">({goals.length}件)</span>
+                                  </span>
+                                  <span className="text-gray-500 text-xs">{isExpanded ? "▼" : "▶"}</span>
+                                </button>
+                                {isExpanded && (
+                                  <div className="px-3 pb-2 space-y-2 border-t border-gray-800">
+                                    {goals.map(goal => {
+                                      const progress = goal.target_value ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100)) : 0;
+                                      const barColor = progress >= 80 ? "bg-green-500" : progress >= 40 ? "bg-yellow-500" : "bg-red-500";
+                                      return (
+                                        <div key={goal.id} className="pt-2 space-y-1">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-xs text-gray-300 truncate">{goal.title}</span>
+                                            <span className="text-xs text-gray-500 shrink-0 ml-1">{goal.current_value ?? 0}/{goal.target_value ?? "?"}{goal.unit ?? ""}</span>
+                                          </div>
+                                          <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                            <div className={`h-full transition-all duration-300 ${barColor}`} style={{ width: `${progress}%` }} />
+                                          </div>
+                                          <div className="text-right text-xs text-gray-600">{progress}%</div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
