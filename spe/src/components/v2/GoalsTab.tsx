@@ -55,7 +55,8 @@ export default function GoalsTab() {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data)) {
-        setOtherTodos(data.filter((t: TodoV2) => t.goal_id == null));
+        // goal_id なし かつ scheduled_date なし = 純粋な「その他タスク」
+        setOtherTodos(data.filter((t: TodoV2) => t.goal_id == null && t.scheduled_date == null));
       }
     }
   }, []);
@@ -145,7 +146,7 @@ export default function GoalsTab() {
     await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, current_value: editGoal?.current_value ?? 0 }),
+      body: JSON.stringify({ ...form, current_value: editGoal?.current_value ?? 0, parent_id: null }),
     });
     setShowModal(false);
     fetchGoals();
@@ -199,6 +200,15 @@ export default function GoalsTab() {
 
   const handleDeleteOtherTodo = async (id: number) => {
     await fetch(`/api/v2/todos/${id}`, { method: "DELETE" });
+    fetchOtherTodos();
+  };
+
+  const handleMoveToToday = async (id: number) => {
+    await fetch(`/api/v2/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scheduled_date: TODAY }),
+    });
     fetchOtherTodos();
   };
 
@@ -325,7 +335,7 @@ export default function GoalsTab() {
         ) : (
           <div className="space-y-1.5">
             {otherTodos.map((todo) => (
-              <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 flex items-center gap-3">
+              <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 flex items-center gap-2">
                 <button
                   onClick={() => handleCompleteOtherTodo(todo.id)}
                   className="w-4 h-4 rounded-full border border-gray-600 hover:border-blue-500 shrink-0 transition-colors"
@@ -333,6 +343,11 @@ export default function GoalsTab() {
                 <span className="text-sm">{CATEGORY_EMOJI[todo.category] ?? "📌"}</span>
                 <p className="flex-1 text-sm text-gray-200 truncate">{todo.title}</p>
                 <span className="text-xs text-gray-600 shrink-0">⏱{todo.estimated_minutes}分</span>
+                <button
+                  onClick={() => handleMoveToToday(todo.id)}
+                  className="shrink-0 text-xs px-2 py-0.5 rounded border border-blue-700 text-blue-400 hover:bg-blue-900/40 transition-colors"
+                  title="今日のTODOに移動"
+                >📅 今日へ</button>
                 <button
                   onClick={() => handleDeleteOtherTodo(todo.id)}
                   className="text-gray-700 hover:text-red-500 text-xs shrink-0"
@@ -382,6 +397,15 @@ export default function GoalsTab() {
 
             <div className="grid grid-cols-3 gap-3">
               <div>
+                <label className="text-xs text-gray-500 mb-1 block">現在値</label>
+                <input type="number" placeholder="0"
+                  value={editGoal?.current_value ?? 0}
+                  onChange={(e) => {
+                    if (editGoal) setEditGoal({ ...editGoal, current_value: Number(e.target.value) });
+                  }}
+                  className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-sm" />
+              </div>
+              <div>
                 <label className="text-xs text-gray-500 mb-1 block">目標値</label>
                 <input type="number" placeholder="100"
                   value={form.target_value ?? ""}
@@ -394,16 +418,6 @@ export default function GoalsTab() {
                   value={form.unit ?? ""}
                   onChange={(e) => setForm({ ...form, unit: e.target.value })}
                   className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-sm" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">親目標</label>
-                <select value={form.parent_id ?? ""} onChange={(e) => setForm({ ...form, parent_id: e.target.value ? Number(e.target.value) : null })}
-                  className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-sm">
-                  <option value="">なし</option>
-                  {goals.filter((g) => g.period_type !== "weekly").map((g) => (
-                    <option key={g.id} value={g.id}>{g.title.slice(0, 20)}</option>
-                  ))}
-                </select>
               </div>
             </div>
 

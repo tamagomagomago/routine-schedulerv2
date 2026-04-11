@@ -26,7 +26,13 @@ interface TodayTabProps {
 export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const [todos, setTodos] = useState<TodoV2[]>([]);
   const [weeklyGoals, setWeeklyGoals] = useState<GoalV2[]>([]);
-  const [showWeeklyGoals, setShowWeeklyGoals] = useState(true);
+  // localStorage で表示設定を永続化
+  const [showWeeklyGoals, setShowWeeklyGoals] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_show_weekly_goals") !== "false";
+    }
+    return true;
+  });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<CreateTodoV2>({
     title: "",
@@ -87,6 +93,20 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     fetchTodos();
   };
 
+  const handleMoveToOther = async (id: number) => {
+    await fetch(`/api/v2/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scheduled_date: null }),
+    });
+    fetchTodos();
+  };
+
+  const toggleWeeklyGoals = (val: boolean) => {
+    setShowWeeklyGoals(val);
+    localStorage.setItem("v2_show_weekly_goals", String(val));
+  };
+
   const handleSubmit = async () => {
     if (!form.title.trim()) return;
     setLoading(true);
@@ -139,14 +159,22 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
       {weeklyGoals.length > 0 && (
         <div className="mx-4 mb-3 bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
           <button
-            onClick={() => setShowWeeklyGoals((v) => !v)}
+            onClick={() => toggleWeeklyGoals(!showWeeklyGoals)}
             className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <span className="text-green-400 text-xs font-semibold">📅 今週の目標</span>
               <span className="text-xs text-gray-600">{weeklyGoals.length}件</span>
+              {!showWeeklyGoals && (
+                <span className="text-xs text-gray-600 border border-gray-700 px-1.5 py-0.5 rounded">非表示中</span>
+              )}
             </div>
-            <span className="text-gray-500 text-xs">{showWeeklyGoals ? "▲" : "▼"}</span>
+            {/* トグルスイッチ */}
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-4 rounded-full transition-colors relative ${showWeeklyGoals ? "bg-green-600" : "bg-gray-700"}`}>
+                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showWeeklyGoals ? "translate-x-4" : "translate-x-0.5"}`} />
+              </div>
+            </div>
           </button>
           {showWeeklyGoals && (
             <div className="px-3 pb-3 space-y-2 border-t border-gray-800">
@@ -210,6 +238,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
             onSetMIT={() => handleSetMIT(todo)}
             onDelete={() => handleDelete(todo.id)}
             onFocus={() => onStartFocus(todo)}
+            onMoveToOther={todo.goal_id == null ? () => handleMoveToOther(todo.id) : undefined}
           />
         ))}
 
@@ -341,7 +370,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 }
 
 function TodoCard({
-  todo, weeklyGoals, onComplete, onSetMIT, onDelete, onFocus, dimmed = false,
+  todo, weeklyGoals, onComplete, onSetMIT, onDelete, onFocus, onMoveToOther, dimmed = false,
 }: {
   todo: TodoV2;
   weeklyGoals: GoalV2[];
@@ -349,6 +378,7 @@ function TodoCard({
   onSetMIT: () => void;
   onDelete: () => void;
   onFocus: () => void;
+  onMoveToOther?: () => void;
   dimmed?: boolean;
 }) {
   const catColor = CATEGORY_COLOR[todo.category] ?? CATEGORY_COLOR.personal;
@@ -394,6 +424,13 @@ function TodoCard({
         {/* アクション */}
         {!todo.is_completed && (
           <div className="flex items-center gap-1 shrink-0">
+            {onMoveToOther && (
+              <button
+                onClick={onMoveToOther}
+                className="text-xs px-1.5 py-0.5 rounded border border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-500 transition-colors"
+                title="その他タスクに戻す"
+              >📋</button>
+            )}
             <button
               onClick={onSetMIT}
               className={`text-sm px-1.5 py-1 rounded transition-colors ${todo.is_mit ? "text-red-400" : "text-gray-600 hover:text-red-400"}`}
