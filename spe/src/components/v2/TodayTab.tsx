@@ -428,13 +428,23 @@ function TodoCard({
   return (
     <div className={`bg-gray-900 border rounded-xl p-3 transition-all ${todo.is_mit ? "border-red-700" : "border-gray-800"} ${dimmed ? "opacity-50" : ""}`}>
       <div className="flex items-start gap-3">
-        {/* チェックボックス */}
-        <button
-          onClick={onComplete}
-          className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${todo.is_completed ? "bg-blue-600 border-blue-600" : "border-gray-600 hover:border-blue-500"}`}
-        >
-          {todo.is_completed && <span className="text-white text-xs">✓</span>}
-        </button>
+        {/* チェックボックス + 削除ボタン */}
+        <div className="flex items-center gap-1 shrink-0 group">
+          <button
+            onClick={onComplete}
+            className={`mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${todo.is_completed ? "bg-blue-600 border-blue-600" : "border-gray-600 hover:border-blue-500"}`}
+            title="完了/未完了"
+          >
+            {todo.is_completed && <span className="text-white text-xs">✓</span>}
+          </button>
+          {!todo.is_completed && (
+            <button
+              onClick={onDelete}
+              className="text-xs text-gray-700 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 -ml-1"
+              title="削除"
+            >✕</button>
+          )}
+        </div>
 
         {/* 内容 */}
         <div className="flex-1 min-w-0">
@@ -481,10 +491,6 @@ function TodoCard({
               className="text-sm px-1.5 py-1 rounded text-gray-600 hover:text-green-400 transition-colors"
               title="集中開始"
             >▶</button>
-            <button
-              onClick={onDelete}
-              className="text-xs text-gray-700 hover:text-red-500 transition-colors px-1"
-            >✕</button>
           </div>
         )}
       </div>
