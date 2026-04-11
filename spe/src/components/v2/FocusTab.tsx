@@ -104,21 +104,22 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
   }, []);
 
   const getRandomMessage = useCallback(() => {
-    const unusedMessages = MOTIVATION_MESSAGES.filter((msg) => !shownMessagesToday.has(msg));
-    const messagesToChoose = unusedMessages.length > 0 ? unusedMessages : MOTIVATION_MESSAGES;
-    const randomMsg = messagesToChoose[Math.floor(Math.random() * messagesToChoose.length)];
+    setShownMessagesToday((prev) => {
+      const unusedMessages = MOTIVATION_MESSAGES.filter((msg) => !prev.has(msg));
+      const messagesToChoose = unusedMessages.length > 0 ? unusedMessages : MOTIVATION_MESSAGES;
+      const randomMsg = messagesToChoose[Math.floor(Math.random() * messagesToChoose.length)];
 
-    // メッセージを記録
-    const newShown = new Set(shownMessagesToday);
-    newShown.add(randomMsg);
-    setShownMessagesToday(newShown);
+      const newShown = new Set(prev);
+      newShown.add(randomMsg);
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("v2_shown_messages_today", JSON.stringify(Array.from(newShown)));
-    }
+      if (typeof window !== "undefined") {
+        localStorage.setItem("v2_shown_messages_today", JSON.stringify(Array.from(newShown)));
+      }
 
-    return randomMsg;
-  }, [shownMessagesToday]);
+      setCurrentMessage(randomMsg);
+      return newShown;
+    });
+  }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -150,10 +151,9 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
 
   // メッセージローテーション（5分ごと）
   useEffect(() => {
-    if (isRunning && getRandomMessage) {
-      // 初回メッセージは即座に表示済み（handleStart で設定）
+    if (isRunning) {
       messageIntervalRef.current = setInterval(() => {
-        setCurrentMessage(getRandomMessage());
+        getRandomMessage();
       }, 5 * 60 * 1000); // 5分
     }
     return () => {
@@ -186,7 +186,7 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
     }
 
     // 初回メッセージを表示
-    setCurrentMessage(getRandomMessage());
+    getRandomMessage();
 
     startTimeRef.current = Date.now();
     setElapsed(0);
