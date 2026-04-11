@@ -1,10 +1,14 @@
 {
-  "buildCommand": "cd spe && npm run build",
-  "outputDirectory": "spe/.next",
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/spe/$1"
+      "src": "spe/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "spe/$1"
     }
   ]
 }
