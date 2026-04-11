@@ -4,6 +4,8 @@ import { createServerClient } from "@/lib/supabase";
 import { Goal, Todo } from "@/types";
 import { buildProfileContext } from "@/lib/profile";
 
+export const dynamic = "force-dynamic";
+
 const client = new Anthropic();
 
 function buildPrompt(todos: Todo[], goals: Goal[], date: string): string {
