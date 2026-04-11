@@ -29,6 +29,9 @@ export default function GoalsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editGoal, setEditGoal] = useState<GoalV2 | null>(null);
   const [showLastMonth, setShowLastMonth] = useState(false);
+  const [openAnnual, setOpenAnnual] = useState(true);
+  const [openMonthly, setOpenMonthly] = useState(true);
+  const [openWeekly, setOpenWeekly] = useState(true);
   const [form, setForm] = useState<CreateGoalV2>({
     title: "",
     category: "personal",
@@ -235,18 +238,22 @@ export default function GoalsTab() {
       {/* 年間目標 */}
       <Section
         title="📊 年間目標"
-        color="text-purple-400"
+        bgColor="bg-purple-950/40"
+        borderColor="border-purple-700"
         goals={annualGoals}
         onEdit={openEdit}
         onDelete={handleDelete}
         onProgress={handleProgress}
         onAdd={() => openCreate("annual")}
+        open={openAnnual}
+        onToggle={() => setOpenAnnual(!openAnnual)}
       />
 
       {/* 今月の目標 */}
       <Section
         title="📌 今月の目標"
-        color="text-blue-400"
+        bgColor="bg-blue-950/40"
+        borderColor="border-blue-700"
         goals={thisMonthGoals}
         allGoals={monthlyGoals}
         parentGoals={annualGoals}
@@ -255,12 +262,15 @@ export default function GoalsTab() {
         onProgress={handleProgress}
         onAdd={() => openCreate("monthly")}
         emptyText="今月の目標がありません"
+        open={openMonthly}
+        onToggle={() => setOpenMonthly(!openMonthly)}
       />
 
       {/* 今週の目標 */}
       <Section
         title="📅 今週の目標"
-        color="text-green-400"
+        bgColor="bg-green-950/40"
+        borderColor="border-green-700"
         goals={thisWeekGoals}
         allGoals={weeklyGoals}
         parentGoals={monthlyGoals}
@@ -269,6 +279,8 @@ export default function GoalsTab() {
         onProgress={handleProgress}
         onAdd={() => openCreate("weekly")}
         emptyText="今週の目標がありません"
+        open={openWeekly}
+        onToggle={() => setOpenWeekly(!openWeekly)}
       />
 
       {/* その他タスク */}
@@ -485,10 +497,11 @@ export default function GoalsTab() {
 }
 
 function Section({
-  title, color, goals, allGoals, parentGoals, onEdit, onDelete, onProgress, onAdd, emptyText,
+  title, bgColor, borderColor, goals, allGoals, parentGoals, onEdit, onDelete, onProgress, onAdd, emptyText, open, onToggle,
 }: {
   title: string;
-  color: string;
+  bgColor: string;
+  borderColor: string;
   goals: GoalV2[];
   allGoals?: GoalV2[];
   parentGoals?: GoalV2[];
@@ -497,45 +510,65 @@ function Section({
   onProgress: (g: GoalV2, delta: number) => void;
   onAdd: () => void;
   emptyText?: string;
+  open: boolean;
+  onToggle: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const displayGoals = showAll ? (allGoals ?? goals) : goals;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <p className={`text-sm font-semibold ${color}`}>{title}</p>
-          {allGoals && allGoals.length > goals.length && (
-            <button
-              onClick={() => setShowAll((v) => !v)}
-              className="text-xs text-gray-600 hover:text-gray-400 underline"
-            >
-              {showAll ? "今期のみ" : `全${allGoals.length}件`}
-            </button>
+    <div className={`${bgColor} border ${borderColor} rounded-xl overflow-hidden`}>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-black/20 transition-colors"
+      >
+        <div className="flex items-center gap-2 flex-1 text-left">
+          <p className="text-sm font-semibold text-gray-100">{title}</p>
+          <span className="text-xs text-gray-500">({displayGoals.length})</span>
+          {allGoals && allGoals.length > goals.length && !showAll && (
+            <span className="text-xs text-gray-600">他{allGoals.length - goals.length}件</span>
           )}
         </div>
-        <button onClick={onAdd} className="text-xs text-gray-500 hover:text-white border border-gray-700 px-2 py-0.5 rounded transition-colors">
-          + 追加
-        </button>
-      </div>
-      {displayGoals.length === 0 ? (
-        <p className="text-gray-700 text-xs text-center py-3">{emptyText ?? "目標がありません"}</p>
-      ) : (
-        <div className="space-y-2">
-          {displayGoals.map((goal) => {
-            const parent = parentGoals?.find((p) => p.id === goal.parent_id);
-            return (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                parentLabel={parent ? `${CATEGORY_EMOJI[parent.category] ?? ""} ${parent.title}` : undefined}
-                onEdit={() => onEdit(goal)}
-                onDelete={() => onDelete(goal.id)}
-                onProgress={(d) => onProgress(goal, d)}
-              />
-            );
-          })}
+        <span className="text-gray-400">{open ? "▼" : "▶"}</span>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-3 space-y-3 border-t border-black/30">
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2">
+              {allGoals && allGoals.length > goals.length && (
+                <button
+                  onClick={() => setShowAll((v) => !v)}
+                  className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 px-2 py-0.5 rounded transition-colors"
+                >
+                  {showAll ? "今期のみ" : `全${allGoals.length}件`}
+                </button>
+              )}
+            </div>
+            <button onClick={onAdd} className="text-xs text-gray-400 hover:text-white border border-gray-700 px-2 py-0.5 rounded transition-colors">
+              + 追加
+            </button>
+          </div>
+
+          {displayGoals.length === 0 ? (
+            <p className="text-gray-700 text-xs text-center py-3">{emptyText ?? "目標がありません"}</p>
+          ) : (
+            <div className="space-y-2">
+              {displayGoals.map((goal) => {
+                const parent = parentGoals?.find((p) => p.id === goal.parent_id);
+                return (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    parentLabel={parent ? `${CATEGORY_EMOJI[parent.category] ?? ""} ${parent.title}` : undefined}
+                    onEdit={() => onEdit(goal)}
+                    onDelete={() => onDelete(goal.id)}
+                    onProgress={(d) => onProgress(goal, d)}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
