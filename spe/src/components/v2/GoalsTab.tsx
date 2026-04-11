@@ -45,6 +45,13 @@ export default function GoalsTab() {
     end_date: `${THIS_YEAR}-12-31`,
   });
 
+  // 月初セットアップモーダル
+  const [showMonthlySetup, setShowMonthlySetup] = useState(false);
+  const [monthlySetupStep, setMonthlySetupStep] = useState<"monthly" | "weekly">("monthly");
+  const [monthlyGoalForm, setMonthlyGoalForm] = useState({ title: "", category: "personal", target_value: "", unit: "" });
+  const [weeklyGoalsForm, setWeeklyGoalsForm] = useState<Array<{ week: number; title: string; category: string; target_value: string; unit: string }>>([]);
+  const [savingMonthlySetup, setSavingMonthlySetup] = useState(false);
+
   // その他タスク フォーム
   const [showOtherForm, setShowOtherForm] = useState(false);
   const [otherForm, setOtherForm] = useState({ title: "", category: "personal", estimated_minutes: 30 });
@@ -100,19 +107,42 @@ export default function GoalsTab() {
     };
 
     addInitialAnnualGoals();
-
-    // 月初1日に通知
-    const today = new Date();
-    if (today.getDate() === 1 && "Notification" in window) {
-      Notification.requestPermission().then((perm) => {
-        if (perm === "granted") {
-          new Notification("📌 今月の目標を設定しましょう！", {
-            body: "先月の目標を参考に、今月の目標を設定してください。",
-          });
-        }
-      });
-    }
   }, [fetchGoals, fetchOtherTodos]);
+
+  // 月初1日に月間・週間目標セットアップモーダルを表示
+  useEffect(() => {
+    const today = new Date();
+    const monthlyGoalsInFetch = goals.filter((g) => g.period_type === "monthly");
+    const thisMonthKeyCheck = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    const thisMonthGoalsCheck = monthlyGoalsInFetch.filter((g) => {
+      const s = g.start_date.slice(0, 7);
+      const e = g.end_date.slice(0, 7);
+      return s <= thisMonthKeyCheck && e >= thisMonthKeyCheck;
+    });
+
+    if (today.getDate() === 1 && thisMonthGoalsCheck.length === 0 && !showMonthlySetup) {
+      setShowMonthlySetup(true);
+      setMonthlySetupStep("monthly");
+
+      // 初期週間目標フォームを生成（4週分）
+      const weeklyGoals = [];
+      for (let i = 1; i <= 4; i++) {
+        weeklyGoals.push({ week: i, title: "", category: "personal", target_value: "", unit: "" });
+      }
+      setWeeklyGoalsForm(weeklyGoals);
+
+      // ブラウザ通知も表示
+      if ("Notification" in window) {
+        Notification.requestPermission().then((perm) => {
+          if (perm === "granted") {
+            new Notification("📌 今月の目標を設定しましょう！", {
+              body: "月初のセットアップモーダルが開きました。今月の目標と週間目標を設定してください。",
+            });
+          }
+        });
+      }
+    }
+  }, [goals, showMonthlySetup]);
 
   // 日付計算
   const todayDate = new Date();
@@ -248,6 +278,92 @@ export default function GoalsTab() {
       body: JSON.stringify({ scheduled_date: TODAY }),
     });
     fetchOtherTodos();
+  };
+
+  const getMonthlyDateRange = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    return {
+      start: `${year}-${String(month + 1).padStart(2, "0")}-01`,
+      end: new Date(year, month + 1, 0).toISOString().split("T")[0],
+    };
+  };
+
+  const getWeekDates = (weekNumber: number) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const monthStart = new Date(year, month, 1);
+    const firstMondayOffset = (1 - monthStart.getDay() + 7) % 7 || 7;
+    const weekStart = new Date(year, month, 1 + firstMondayOffset + (weekNumber - 1) * 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    return {
+      start: weekStart.toISOString().split("T")[0],
+      end: weekEnd.toISOString().split("T")[0],
+    };
+  };
+
+  const handleSaveMonthlySetup = async () => {
+    if (!monthlyGoalForm.title.trim()) return;
+    setSavingMonthlySetup(true);
+
+    try {
+      const dateRange = getMonthlyDateRange();
+
+      // 月間目標を作成
+      const monthlyGoalRes = await fetch("/api/v2/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: monthlyGoalForm.title,
+          category: monthlyGoalForm.category,
+          period_type: "monthly",
+          parent_id: null,
+          target_value: monthlyGoalForm.target_value ? Number(monthlyGoalForm.target_value) : undefined,
+          current_value: 0,
+          unit: monthlyGoalForm.unit || "",
+          start_date: dateRange.start,
+          end_date: dateRange.end,
+        }),
+      });
+
+      let monthlyGoalId = null;
+      if (monthlyGoalRes.ok) {
+        const data = await monthlyGoalRes.json();
+        monthlyGoalId = data.id;
+      }
+
+      // 週間目標を作成
+      for (const week of weeklyGoalsForm) {
+        if (week.title.trim()) {
+          const weekDates = getWeekDates(week.week);
+          await fetch("/api/v2/goals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: week.title,
+              category: week.category,
+              period_type: "weekly",
+              parent_id: monthlyGoalId || null,
+              target_value: week.target_value ? Number(week.target_value) : undefined,
+              current_value: 0,
+              unit: week.unit || "",
+              start_date: weekDates.start,
+              end_date: weekDates.end,
+            }),
+          });
+        }
+      }
+
+      setShowMonthlySetup(false);
+      setMonthlyGoalForm({ title: "", category: "personal", target_value: "", unit: "" });
+      setWeeklyGoalsForm([]);
+      fetchGoals();
+    } finally {
+      setSavingMonthlySetup(false);
+    }
   };
 
   return (
@@ -537,6 +653,143 @@ export default function GoalsTab() {
                 キャンセル
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 月初セットアップモーダル */}
+      {showMonthlySetup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-gradient-to-br from-blue-950/60 via-gray-900 to-gray-900 border border-blue-700/50 rounded-2xl w-full max-w-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">📅</span>
+                <div>
+                  <h2 className="text-white font-bold text-xl">今月の目標をセットアップ</h2>
+                  <p className="text-blue-300 text-xs mt-0.5">月間目標と各週の週間目標を設定しましょう</p>
+                </div>
+              </div>
+              <button onClick={() => setShowMonthlySetup(false)} className="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+
+            {/* ステップインジケーター */}
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${monthlySetupStep === "monthly" ? "bg-blue-600 text-white" : "bg-blue-900/40 text-blue-300"}`}>
+                1
+              </div>
+              <div className={`flex-1 h-1 ${monthlySetupStep === "weekly" ? "bg-blue-600" : "bg-gray-700"}`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${monthlySetupStep === "weekly" ? "bg-blue-600 text-white" : "bg-blue-900/40 text-blue-300"}`}>
+                2
+              </div>
+            </div>
+
+            {/* ステップ1: 月間目標 */}
+            {monthlySetupStep === "monthly" && (
+              <div className="space-y-4">
+                <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4">
+                  <p className="text-blue-300 text-sm font-medium mb-3">📌 ステップ1: 月間目標を設定</p>
+                  <p className="text-gray-400 text-xs mb-4">今月の主な目標を1つ設定してください。複数設定する場合は後で追加できます。</p>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">目標タイトル *</label>
+                      <input type="text" placeholder="例：技術ブログ5本投稿"
+                        value={monthlyGoalForm.title}
+                        onChange={(e) => setMonthlyGoalForm({ ...monthlyGoalForm, title: e.target.value })}
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">カテゴリ</label>
+                        <select value={monthlyGoalForm.category} onChange={(e) => setMonthlyGoalForm({ ...monthlyGoalForm, category: e.target.value })}
+                          className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-xs">
+                          {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">目標値</label>
+                        <input type="number" placeholder="5"
+                          value={monthlyGoalForm.target_value}
+                          onChange={(e) => setMonthlyGoalForm({ ...monthlyGoalForm, target_value: e.target.value })}
+                          className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">単位</label>
+                        <input type="text" placeholder="本"
+                          value={monthlyGoalForm.unit}
+                          onChange={(e) => setMonthlyGoalForm({ ...monthlyGoalForm, unit: e.target.value })}
+                          className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-xs" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button onClick={() => setMonthlySetupStep("weekly")}
+                  disabled={!monthlyGoalForm.title.trim()}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
+                  ▶ ステップ2へ（週間目標を設定）
+                </button>
+              </div>
+            )}
+
+            {/* ステップ2: 週間目標 */}
+            {monthlySetupStep === "weekly" && (
+              <div className="space-y-4">
+                <div className="bg-green-900/20 border border-green-800/50 rounded-xl p-4">
+                  <p className="text-green-300 text-sm font-medium mb-3">📅 ステップ2: 週間目標を設定（オプション）</p>
+                  <p className="text-gray-400 text-xs mb-4">各週の小目標を設定します。空白でも構いません。</p>
+
+                  <div className="space-y-3">
+                    {weeklyGoalsForm.map((week, idx) => (
+                      <div key={week.week} className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium text-gray-300">📌 第{week.week}週</label>
+                          <span className="text-xs text-gray-600">{getWeekDates(week.week).start} 〜 {getWeekDates(week.week).end}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="text" placeholder="週の目標"
+                            value={week.title}
+                            onChange={(e) => {
+                              const updated = [...weeklyGoalsForm];
+                              updated[idx].title = e.target.value;
+                              setWeeklyGoalsForm(updated);
+                            }}
+                            className="col-span-2 bg-gray-700 text-white rounded px-2 py-1.5 text-xs" />
+                          <select value={week.category} onChange={(e) => {
+                            const updated = [...weeklyGoalsForm];
+                            updated[idx].category = e.target.value;
+                            setWeeklyGoalsForm(updated);
+                          }} className="bg-gray-700 text-white rounded px-1.5 py-1.5 text-xs">
+                            {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_EMOJI[c]}</option>)}
+                          </select>
+                          <input type="text" placeholder="目標値"
+                            value={week.target_value}
+                            onChange={(e) => {
+                              const updated = [...weeklyGoalsForm];
+                              updated[idx].target_value = e.target.value;
+                              setWeeklyGoalsForm(updated);
+                            }}
+                            className="bg-gray-700 text-white rounded px-1.5 py-1.5 text-xs" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={() => setMonthlySetupStep("monthly")}
+                    className="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">
+                    ◀ 戻る
+                  </button>
+                  <button onClick={handleSaveMonthlySetup}
+                    disabled={savingMonthlySetup || !monthlyGoalForm.title.trim()}
+                    className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
+                    {savingMonthlySetup ? "保存中..." : "✓ 保存して完了"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
