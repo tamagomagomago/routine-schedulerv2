@@ -100,7 +100,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<TodoV2> | null>(null);
   const [editingField, setEditingField] = useState<"title" | "time" | "todayTitle" | "todayTime" | null>(null);
-  const [singleFocusTodoId, setSingleFocusTodoId] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     const [allRes, todayRes, goalsRes] = await Promise.all([
@@ -813,9 +812,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 }
 
                 return (
-                  <div key={todo.id} className={`bg-gray-900 border rounded-xl p-3 ${
-                    singleFocusTodoId === todo.id ? "border-cyan-600 bg-cyan-950/30" : "border-gray-800"
-                  }`}>
+                  <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-xl p-3">
                     <div className="flex items-start gap-2">
                       {/* チェックボックス */}
                       <button
@@ -912,11 +909,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             {PRIORITY_LABEL[todo.priority] ?? "中"}
                           </span>
                           <span className="text-gray-600">⏱ {todo.estimated_minutes}分</span>
-                          {singleFocusTodoId === todo.id && (
-                            <span className="px-1.5 py-0.5 rounded border border-cyan-600 bg-cyan-600/20 text-cyan-300 font-semibold">
-                              💡 シングルフォーカス
-                            </span>
-                          )}
                           {todo.goal_id && weeklyGoals.find(g => g.id === todo.goal_id) && (
                             <span className="px-1.5 py-0.5 rounded border border-purple-700 text-purple-400 bg-purple-950/40">
                               🎯 {weeklyGoals.find(g => g.id === todo.goal_id)?.title.slice(0, 12)}
@@ -936,16 +928,9 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             ✎
                           </button>
                           <button
-                            onClick={() => {
-                              setSingleFocusTodoId(singleFocusTodoId === todo.id ? null : todo.id);
-                              onStartFocus(todo);
-                            }}
-                            className={`text-sm px-1.5 py-1 rounded font-bold transition-colors ${
-                              singleFocusTodoId === todo.id
-                                ? "bg-cyan-600 text-white"
-                                : "text-gray-600 hover:text-cyan-400"
-                            }`}
-                            title="シングルフォーカス開始"
+                            onClick={() => onStartFocus(todo)}
+                            className="text-sm px-1.5 py-1 rounded text-gray-600 hover:text-green-400 transition-colors"
+                            title="集中開始"
                           >
                             ▶
                           </button>

@@ -1,7 +1,8 @@
 {
-  "buildCommand": "cd spe && npm run build",
-  "installCommand": "cd spe && npm install",
-  "devCommand": "cd spe && npm run dev",
-  "outputDirectory": "spe/.next",
-  "framework": "nextjs"
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "devCommand": "npm run dev",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "rootDirectory": "spe"
 }
