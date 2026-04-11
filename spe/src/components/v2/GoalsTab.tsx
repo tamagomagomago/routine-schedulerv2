@@ -6,7 +6,7 @@ import {
   CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_LABEL, PRIORITY_COLOR,
 } from "@/types/v2";
 
-const CATEGORIES = ["vfx", "english", "engineer", "investment", "fitness", "personal"];
+const CATEGORIES = ["video", "english", "investment", "ai", "personal"];
 const TODAY = new Date().toISOString().split("T")[0];
 const THIS_YEAR = new Date().getFullYear();
 
@@ -32,6 +32,7 @@ export default function GoalsTab() {
   const [openAnnual, setOpenAnnual] = useState(true);
   const [openMonthly, setOpenMonthly] = useState(true);
   const [openWeekly, setOpenWeekly] = useState(true);
+  const [openOther, setOpenOther] = useState(true);
   const [form, setForm] = useState<CreateGoalV2>({
     title: "",
     category: "personal",
@@ -283,89 +284,104 @@ export default function GoalsTab() {
         onToggle={() => setOpenWeekly(!openWeekly)}
       />
 
-      {/* その他タスク */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-semibold text-gray-400">📋 その他タスク</p>
-          <button
-            onClick={() => setShowOtherForm((v) => !v)}
-            className="text-xs text-gray-500 hover:text-white border border-gray-700 px-2 py-0.5 rounded transition-colors"
-          >
-            + 追加
-          </button>
-        </div>
-
-        {showOtherForm && (
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 mb-2 space-y-2">
-            <input
-              placeholder="タスク名 *"
-              value={otherForm.title}
-              onChange={(e) => setOtherForm({ ...otherForm, title: e.target.value })}
-              onKeyDown={(e) => e.key === "Enter" && handleAddOtherTodo()}
-              className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              autoFocus
-            />
-            <div className="flex gap-2 items-center">
-              <select
-                value={otherForm.category}
-                onChange={(e) => setOtherForm({ ...otherForm, category: e.target.value })}
-                className="flex-1 bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
-                ))}
-              </select>
-              <input
-                type="number"
-                value={otherForm.estimated_minutes}
-                onChange={(e) => setOtherForm({ ...otherForm, estimated_minutes: Number(e.target.value) })}
-                min={5} step={5}
-                className="w-20 bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
-              />
-              <span className="text-xs text-gray-500">分</span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleAddOtherTodo}
-                disabled={savingOther || !otherForm.title.trim()}
-                className="flex-1 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
-              >
-                追加
-              </button>
-              <button
-                onClick={() => setShowOtherForm(false)}
-                className="py-1.5 px-3 bg-gray-700 text-gray-400 rounded-lg text-xs"
-              >
-                キャンセル
-              </button>
-            </div>
+      {/* その他タスク・買うものリスト */}
+      <div className="bg-gray-800/30 border border-gray-700 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setOpenOther(!openOther)}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-black/20 transition-colors"
+        >
+          <div className="flex items-center gap-2 flex-1 text-left">
+            <p className="text-sm font-semibold text-gray-100">📋 その他タスク・買うものリスト</p>
+            <span className="text-xs text-gray-500">({otherTodos.length})</span>
           </div>
-        )}
+          <span className="text-gray-400">{openOther ? "▼" : "▶"}</span>
+        </button>
 
-        {otherTodos.length === 0 ? (
-          <p className="text-gray-700 text-xs text-center py-3">その他タスクはありません</p>
-        ) : (
-          <div className="space-y-1.5">
-            {otherTodos.map((todo) => (
-              <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 flex items-center gap-2">
-                <button
-                  onClick={() => handleCompleteOtherTodo(todo.id)}
-                  className="w-4 h-4 rounded-full border border-gray-600 hover:border-blue-500 shrink-0 transition-colors"
+        {openOther && (
+          <div className="px-4 pb-3 space-y-3 border-t border-black/30">
+            <div className="flex items-center justify-between pt-2">
+              <div></div>
+              <button
+                onClick={() => setShowOtherForm((v) => !v)}
+                className="text-xs text-gray-400 hover:text-white border border-gray-700 px-2 py-0.5 rounded transition-colors"
+              >
+                + 追加
+              </button>
+            </div>
+
+            {showOtherForm && (
+              <div className="bg-gray-700/50 border border-gray-700 rounded-lg p-3 space-y-2">
+                <input
+                  placeholder="タスク名 *"
+                  value={otherForm.title}
+                  onChange={(e) => setOtherForm({ ...otherForm, title: e.target.value })}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddOtherTodo()}
+                  className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  autoFocus
                 />
-                <span className="text-sm">{CATEGORY_EMOJI[todo.category] ?? "📌"}</span>
-                <p className="flex-1 text-sm text-gray-200 truncate">{todo.title}</p>
-                <span className="text-xs text-gray-600 shrink-0">⏱{todo.estimated_minutes}分</span>
-                <button
-                  onClick={() => handleMoveToToday(todo.id)}
-                  className="shrink-0 text-xs px-2 py-0.5 rounded border border-blue-700 text-blue-400 hover:bg-blue-900/40 transition-colors"
-                  title="今日のTODOに移動"
-                >📅 今日へ</button>
-                <button
-                  onClick={() => handleDeleteOtherTodo(todo.id)}
-                  className="text-gray-700 hover:text-red-500 text-xs shrink-0"
-                >✕</button>
+                <div className="flex gap-2 items-center">
+                  <select
+                    value={otherForm.category}
+                    onChange={(e) => setOtherForm({ ...otherForm, category: e.target.value })}
+                    className="flex-1 bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    value={otherForm.estimated_minutes}
+                    onChange={(e) => setOtherForm({ ...otherForm, estimated_minutes: Number(e.target.value) })}
+                    min={5} step={5}
+                    className="w-20 bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                  />
+                  <span className="text-xs text-gray-500">分</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddOtherTodo}
+                    disabled={savingOther || !otherForm.title.trim()}
+                    className="flex-1 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                  >
+                    追加
+                  </button>
+                  <button
+                    onClick={() => setShowOtherForm(false)}
+                    className="py-1.5 px-3 bg-gray-700 text-gray-400 rounded-lg text-xs"
+                  >
+                    キャンセル
+                  </button>
+                </div>
               </div>
-            ))}
+            )}
+
+            {otherTodos.length === 0 ? (
+              <p className="text-gray-700 text-xs text-center py-3">その他タスクはありません</p>
+            ) : (
+              <div className="space-y-1.5">
+                {otherTodos.map((todo) => (
+                  <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 flex items-center gap-2">
+                    <button
+                      onClick={() => handleCompleteOtherTodo(todo.id)}
+                      className="w-4 h-4 rounded-full border border-gray-600 hover:border-blue-500 shrink-0 transition-colors"
+                    />
+                    <span className="text-sm">{CATEGORY_EMOJI[todo.category] ?? "📌"}</span>
+                    <p className="flex-1 text-sm text-gray-200 truncate">{todo.title}</p>
+                    <span className="text-xs text-gray-600 shrink-0">⏱{todo.estimated_minutes}分</span>
+                    <button
+                      onClick={() => handleMoveToToday(todo.id)}
+                      className="shrink-0 text-xs px-2 py-0.5 rounded border border-blue-700 text-blue-400 hover:bg-blue-900/40 transition-colors"
+                      title="今日のTODOに移動"
+                    >📅 今日へ</button>
+                    <button
+                      onClick={() => handleDeleteOtherTodo(todo.id)}
+                      className="text-gray-700 hover:text-red-500 text-xs shrink-0"
+                    >✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1,31 +1,40 @@
-export type V2Category = "vfx" | "english" | "engineer" | "investment" | "fitness" | "personal";
+export type V2Category = "video" | "english" | "investment" | "ai" | "personal" | "fitness" | "engineer" | "vfx";
 export type V2PeriodType = "annual" | "monthly" | "weekly";
 
 export const CATEGORY_LABEL: Record<string, string> = {
-  vfx: "映像",
+  video: "動画制作",
   english: "英語",
-  engineer: "エンジニア",
   investment: "投資",
-  fitness: "フィットネス",
+  ai: "生成AI",
   personal: "個人",
+  // レガシーカテゴリー（後方互換性）
+  fitness: "フィットネス",
+  engineer: "エンジニア",
+  vfx: "映像",
 };
 
 export const CATEGORY_EMOJI: Record<string, string> = {
-  vfx: "🎬",
+  video: "🎥",
   english: "🗣️",
-  engineer: "📐",
   investment: "💰",
-  fitness: "💪",
+  ai: "🤖",
   personal: "⭐",
+  // レガシーカテゴリー（後方互換性）
+  fitness: "💪",
+  engineer: "📐",
+  vfx: "🎬",
 };
 
 export const CATEGORY_COLOR: Record<string, string> = {
-  vfx: "text-purple-300 bg-purple-900/40 border-purple-700",
+  video: "text-purple-300 bg-purple-900/40 border-purple-700",
   english: "text-blue-300 bg-blue-900/40 border-blue-700",
-  engineer: "text-teal-300 bg-teal-900/40 border-teal-700",
   investment: "text-green-300 bg-green-900/40 border-green-700",
-  fitness: "text-orange-300 bg-orange-900/40 border-orange-700",
+  ai: "text-pink-300 bg-pink-900/40 border-pink-700",
   personal: "text-gray-300 bg-gray-700/40 border-gray-600",
+  // レガシーカテゴリー（後方互換性）
+  fitness: "text-orange-300 bg-orange-900/40 border-orange-700",
+  engineer: "text-teal-300 bg-teal-900/40 border-teal-700",
+  vfx: "text-purple-300 bg-purple-900/40 border-purple-700",
 };
 
 export const PRIORITY_LABEL: Record<number, string> = { 1: "高", 3: "中", 5: "低" };

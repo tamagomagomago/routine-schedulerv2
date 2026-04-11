@@ -20,7 +20,7 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 const CAT_BADGE = "bg-blue-900/60 text-blue-300 border border-blue-700";
 
-const PRESET_CATEGORIES = ["vfx", "english", "engineer", "investment", "fitness", "personal"];
+const PRESET_CATEGORIES = ["video", "english", "investment", "ai", "personal"];
 
 const TIME_PREF_OPTIONS: { value: PreferredTime; label: string; emoji: string }[] = [
   { value: "morning",   label: "朝",   emoji: "🌅" },
@@ -29,12 +29,15 @@ const TIME_PREF_OPTIONS: { value: PreferredTime; label: string; emoji: string }[
 ];
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  vfx: "🎬",
+  video: "🎥",
   english: "🗣️",
-  engineer: "📐",
   investment: "💰",
-  fitness: "💪",
+  ai: "🤖",
   personal: "⭐",
+  // レガシーカテゴリー（後方互換性）
+  vfx: "🎬",
+  engineer: "📐",
+  fitness: "💪",
 };
 
 // ルーティンテンプレート（平日・休日）

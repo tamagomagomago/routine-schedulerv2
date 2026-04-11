@@ -4,7 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import { TodoV2, CreateTodoV2, GoalV2, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_COLOR, PRIORITY_LABEL } from "@/types/v2";
 
 const TODAY = new Date().toISOString().split("T")[0];
-const CATEGORIES = ["vfx", "english", "engineer", "investment", "fitness", "personal"];
+const CATEGORIES = ["video", "english", "investment", "ai", "personal"];
+
+// 曜日ごとのダンベルトレメニュー
+const DUMBBELL_MENU: Record<number, string> = {
+  1: "🏋️ ダンベルトレ（胸・肩）",     // 月
+  2: "🏋️ ダンベルトレ（背中・二頭）", // 火
+  3: "🏋️ ダンベルトレ（脚）",         // 水
+  4: "🏋️ ダンベルトレ（胸・肩）",     // 木
+  5: "🏋️ ダンベルトレ（背中・二頭）", // 金
+};
 
 function getThisWeekRange() {
   const today = new Date();
@@ -68,6 +77,38 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   useEffect(() => {
     fetchTodos();
     fetchWeeklyGoals();
+
+    // ダンベルトレーニングを自動追加（平日のみ）
+    const day = new Date().getDay();
+    const isDumbbellDay = [1, 2, 3, 4, 5].includes(day); // 月～金
+
+    if (isDumbbellDay) {
+      const addDumbbellIfMissing = async () => {
+        const res = await fetch(`/api/v2/todos?date=${TODAY}`);
+        if (res.ok) {
+          const existingTodos = await res.json();
+          const hasDumbbell = existingTodos?.some((t: TodoV2) => t.title?.includes("ダンベルトレ"));
+
+          if (!hasDumbbell) {
+            const dumbbellTitle = DUMBBELL_MENU[day] || "🏋️ ダンベルトレ";
+            await fetch("/api/v2/todos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: dumbbellTitle,
+                category: "personal",
+                priority: 3,
+                estimated_minutes: 30,
+                scheduled_date: TODAY,
+                scheduled_start: "07:00",
+              }),
+            });
+            fetchTodos();
+          }
+        }
+      };
+      addDumbbellIfMissing();
+    }
   }, [fetchTodos, fetchWeeklyGoals]);
 
   const handleComplete = async (todo: TodoV2) => {

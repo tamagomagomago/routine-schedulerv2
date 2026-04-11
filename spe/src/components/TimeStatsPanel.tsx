@@ -16,21 +16,27 @@ interface TimeSession {
 type Period = "week" | "month";
 
 const CATEGORY_COLOR: Record<string, string> = {
-  vfx:        "#9333ea",
+  video:      "#9333ea",
   english:    "#3b82f6",
   investment: "#22c55e",
+  ai:         "#ec4899",
+  personal:   "#9ca3af",
+  // レガシーカテゴリー（後方互換性）
   fitness:    "#f97316",
   engineer:   "#14b8a6",
-  personal:   "#9ca3af",
+  vfx:        "#9333ea",
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  vfx:        "🎬 映像",
+  video:      "🎥 動画制作",
   english:    "🗣️ 英語",
   investment: "💰 投資",
+  ai:         "🤖 生成AI",
+  personal:   "⭐ 個人",
+  // レガシーカテゴリー（後方互換性）
   fitness:    "💪 筋トレ",
   engineer:   "📐 技術士",
-  personal:   "⭐ 個人",
+  vfx:        "🎬 映像",
 };
 
 function fmtDuration(sec: number): string {

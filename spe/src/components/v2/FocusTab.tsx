@@ -168,7 +168,7 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
                 onChange={(e) => setCustomCategory(e.target.value)}
                 className="bg-gray-800 text-white border border-gray-700 rounded-xl px-2 py-2 text-sm"
               >
-                {["vfx", "english", "engineer", "investment", "fitness", "personal"].map((c) => (
+                {["video", "english", "investment", "ai", "personal"].map((c) => (
                   <option key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</option>
                 ))}
               </select>
