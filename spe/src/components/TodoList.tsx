@@ -677,6 +677,7 @@ interface TodoListProps {
 
 export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
   const [masterTodos, setMasterTodos] = useState<Todo[]>([]);
+  const [weeklyTodos, setWeeklyTodos] = useState<Todo[]>([]);
   const [todayTodos, setTodayTodos] = useState<Todo[]>([]);
   const [weeklyGoals, setWeeklyGoals] = useState<any[]>([]);
   const [allGoals, setAllGoals] = useState<any[]>([]);
@@ -769,13 +770,16 @@ export default function TodoList({ selectedFocusTask }: TodoListProps = {}) {
 
   const fetchTodos = useCallback(async () => {
     try {
-      const [masterRes, todayRes] = await Promise.all([
+      const [masterRes, weeklyRes, todayRes] = await Promise.all([
         fetch("/api/todos?is_today=false"),
+        fetch("/api/todos?week=true"),
         fetch("/api/todos?is_today=true"),
       ]);
       const masterData = await masterRes.json();
+      const weeklyData = await weeklyRes.json();
       const todayData = await todayRes.json();
       if (Array.isArray(masterData)) setMasterTodos(masterData);
+      if (Array.isArray(weeklyData)) setWeeklyTodos(weeklyData);
       if (Array.isArray(todayData)) setTodayTodos(todayData);
     } catch (e) {
       console.error("fetchTodos error:", e);

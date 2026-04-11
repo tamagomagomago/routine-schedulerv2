@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Todo } from "@/types";
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -34,6 +35,8 @@ interface Props {
 }
 
 export default function TodoItem({ todo, onComplete, onEdit, onDelete }: Props) {
+  const [expandDescription, setExpandDescription] = useState(false);
+
   return (
     <div
       className={`bg-gray-800 border rounded-xl p-3 transition-all ${
@@ -71,7 +74,25 @@ export default function TodoItem({ todo, onComplete, onEdit, onDelete }: Props) 
           </div>
 
           {todo.description && (
-            <p className="text-gray-400 text-xs mt-0.5 truncate">{todo.description}</p>
+            <div className="mt-1.5">
+              <p
+                onClick={() => setExpandDescription(!expandDescription)}
+                className={`text-gray-400 text-xs cursor-pointer transition-all ${
+                  expandDescription ? "whitespace-normal" : "truncate"
+                } hover:text-gray-300`}
+                title={expandDescription ? "" : todo.description}
+              >
+                {todo.description}
+              </p>
+              {expandDescription && (
+                <button
+                  onClick={() => setExpandDescription(false)}
+                  className="text-gray-600 hover:text-gray-400 text-xs mt-0.5"
+                >
+                  ▲ 折りたたむ
+                </button>
+              )}
+            </div>
           )}
 
           <div className="flex items-center gap-3 mt-1.5 flex-wrap">

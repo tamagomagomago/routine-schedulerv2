@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const is_completed = searchParams.get("is_completed");
     const is_today = searchParams.get("is_today");
+    const week = searchParams.get("week");
 
     let query = supabase
       .from("todos")
@@ -38,6 +39,18 @@ export async function GET(request: NextRequest) {
       } else {
         query = query.eq("is_today", false);
       }
+    }
+    if (week === "true") {
+      // 今週の月曜～日曜の範囲
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      const mondayStr = monday.toISOString().split("T")[0];
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const sundayStr = sunday.toISOString().split("T")[0];
+      query = query.gte("due_date", mondayStr).lte("due_date", sundayStr);
     }
 
     const { data, error } = await query;
