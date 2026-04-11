@@ -150,14 +150,15 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
 
   // メッセージローテーション（5分ごと）
   useEffect(() => {
-    if (isRunning) {
+    if (isRunning && getRandomMessage) {
+      // 初回メッセージは即座に表示済み（handleStart で設定）
       messageIntervalRef.current = setInterval(() => {
         setCurrentMessage(getRandomMessage());
       }, 5 * 60 * 1000); // 5分
-    } else {
-      if (messageIntervalRef.current) clearInterval(messageIntervalRef.current);
     }
-    return () => { if (messageIntervalRef.current) clearInterval(messageIntervalRef.current); };
+    return () => {
+      if (messageIntervalRef.current) clearInterval(messageIntervalRef.current);
+    };
   }, [isRunning, getRandomMessage]);
 
   const handleStart = async () => {

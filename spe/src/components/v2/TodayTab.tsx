@@ -306,7 +306,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   };
 
   const handleDeleteTodo = async (id: number) => {
-    if (confirm("本当に削除しますか？")) {
+    if (typeof window !== "undefined" && window.confirm("本当に削除しますか？")) {
       const res = await fetch(`/api/v2/todos/${id}`, { method: "DELETE" });
       if (res.ok) fetchData();
     }
