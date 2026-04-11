@@ -25,14 +25,12 @@ function getThisWeekRange() {
 
 export default function GoalsTab() {
   const [goals, setGoals] = useState<GoalV2[]>([]);
-  const [otherTodos, setOtherTodos] = useState<TodoV2[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editGoal, setEditGoal] = useState<GoalV2 | null>(null);
   const [showLastMonth, setShowLastMonth] = useState(false);
   const [openAnnual, setOpenAnnual] = useState(true);
   const [openMonthly, setOpenMonthly] = useState(true);
   const [openWeekly, setOpenWeekly] = useState(true);
-  const [openOther, setOpenOther] = useState(true);
   const [form, setForm] = useState<CreateGoalV2 & { current_value?: number }>({
     title: "",
     category: "personal",
@@ -52,29 +50,9 @@ export default function GoalsTab() {
   const [weeklyGoalsForm, setWeeklyGoalsForm] = useState<Array<{ week: number; title: string; category: string; target_value: string; unit: string }>>([]);
   const [savingMonthlySetup, setSavingMonthlySetup] = useState(false);
 
-  // その他タスク フォーム
-  const [showOtherForm, setShowOtherForm] = useState(false);
-  const [otherForm, setOtherForm] = useState({ title: "", category: "personal", estimated_minutes: 30 });
-  const [savingOther, setSavingOther] = useState(false);
-
   const fetchData = useCallback(async () => {
-    // 並列で2つのAPIリクエストを実行
-    const [goalsRes, todosRes] = await Promise.all([
-      fetch("/api/v2/goals"),
-      fetch("/api/v2/todos"),
-    ]);
-
-    // 目標を更新
+    const goalsRes = await fetch("/api/v2/goals");
     if (goalsRes.ok) setGoals(await goalsRes.json());
-
-    // その他タスクを更新
-    if (todosRes.ok) {
-      const data = await todosRes.json();
-      if (Array.isArray(data)) {
-        // goal_id なし かつ scheduled_date なし = 純粋な「その他タスク」
-        setOtherTodos(data.filter((t: TodoV2) => t.goal_id == null && t.scheduled_date == null));
-      }
-    }
   }, []);
 
   useEffect(() => {
@@ -240,48 +218,6 @@ export default function GoalsTab() {
     fetchData();
   };
 
-  const handleAddOtherTodo = async () => {
-    if (!otherForm.title.trim()) return;
-    setSavingOther(true);
-    await fetch("/api/v2/todos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: otherForm.title,
-        category: otherForm.category,
-        priority: 3,
-        estimated_minutes: otherForm.estimated_minutes,
-        goal_id: null,
-      }),
-    });
-    setOtherForm({ title: "", category: "personal", estimated_minutes: 30 });
-    setShowOtherForm(false);
-    setSavingOther(false);
-    fetchData();
-  };
-
-  const handleCompleteOtherTodo = async (id: number) => {
-    await fetch(`/api/v2/todos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_completed: true }),
-    });
-    fetchData();
-  };
-
-  const handleDeleteOtherTodo = async (id: number) => {
-    await fetch(`/api/v2/todos/${id}`, { method: "DELETE" });
-    fetchData();
-  };
-
-  const handleMoveToToday = async (id: number) => {
-    await fetch(`/api/v2/todos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheduled_date: TODAY }),
-    });
-    fetchData();
-  };
 
   const getMonthlyDateRange = () => {
     const today = new Date();
@@ -436,108 +372,6 @@ export default function GoalsTab() {
         open={openWeekly}
         onToggle={() => setOpenWeekly(!openWeekly)}
       />
-
-      {/* その他タスク・買うものリスト */}
-      <div className="bg-gray-800/30 border border-gray-700 rounded-xl overflow-hidden">
-        <button
-          onClick={() => setOpenOther(!openOther)}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-black/20 transition-colors"
-        >
-          <div className="flex items-center gap-2 flex-1 text-left">
-            <p className="text-sm font-semibold text-gray-100">📋 その他タスク・買うものリスト</p>
-            <span className="text-xs text-gray-500">({otherTodos.length})</span>
-          </div>
-          <span className="text-gray-400">{openOther ? "▼" : "▶"}</span>
-        </button>
-
-        {openOther && (
-          <div className="px-4 pb-3 space-y-3 border-t border-black/30">
-            <div className="flex items-center justify-between pt-2">
-              <div></div>
-              <button
-                onClick={() => setShowOtherForm((v) => !v)}
-                className="text-xs text-gray-400 hover:text-white border border-gray-700 px-2 py-0.5 rounded transition-colors"
-              >
-                + 追加
-              </button>
-            </div>
-
-            {showOtherForm && (
-              <div className="bg-gray-700/50 border border-gray-700 rounded-lg p-3 space-y-2">
-                <input
-                  placeholder="タスク名 *"
-                  value={otherForm.title}
-                  onChange={(e) => setOtherForm({ ...otherForm, title: e.target.value })}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddOtherTodo()}
-                  className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  autoFocus
-                />
-                <div className="flex gap-2 items-center">
-                  <select
-                    value={otherForm.category}
-                    onChange={(e) => setOtherForm({ ...otherForm, category: e.target.value })}
-                    className="flex-1 bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    value={otherForm.estimated_minutes}
-                    onChange={(e) => setOtherForm({ ...otherForm, estimated_minutes: Number(e.target.value) })}
-                    min={5} step={5}
-                    className="w-20 bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
-                  />
-                  <span className="text-xs text-gray-500">分</span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAddOtherTodo}
-                    disabled={savingOther || !otherForm.title.trim()}
-                    className="flex-1 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
-                  >
-                    追加
-                  </button>
-                  <button
-                    onClick={() => setShowOtherForm(false)}
-                    className="py-1.5 px-3 bg-gray-700 text-gray-400 rounded-lg text-xs"
-                  >
-                    キャンセル
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {otherTodos.length === 0 ? (
-              <p className="text-gray-700 text-xs text-center py-3">その他タスクはありません</p>
-            ) : (
-              <div className="space-y-1.5">
-                {otherTodos.map((todo) => (
-                  <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 flex items-center gap-2">
-                    <button
-                      onClick={() => handleCompleteOtherTodo(todo.id)}
-                      className="w-4 h-4 rounded-full border border-gray-600 hover:border-blue-500 shrink-0 transition-colors"
-                    />
-                    <span className="text-sm">{CATEGORY_EMOJI[todo.category] ?? "📌"}</span>
-                    <p className="flex-1 text-sm text-gray-200 truncate">{todo.title}</p>
-                    <span className="text-xs text-gray-600 shrink-0">⏱{todo.estimated_minutes}分</span>
-                    <button
-                      onClick={() => handleMoveToToday(todo.id)}
-                      className="shrink-0 text-xs px-2 py-0.5 rounded border border-blue-700 text-blue-400 hover:bg-blue-900/40 transition-colors"
-                      title="今日のTODOに移動"
-                    >📅 今日へ</button>
-                    <button
-                      onClick={() => handleDeleteOtherTodo(todo.id)}
-                      className="text-gray-700 hover:text-red-500 text-xs shrink-0"
-                    >✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* 目標 作成/編集モーダル */}
       {showModal && (

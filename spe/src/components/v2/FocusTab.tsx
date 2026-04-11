@@ -6,6 +6,67 @@ import { TodoV2, FocusSessionV2, CATEGORY_EMOJI, CATEGORY_COLOR, CATEGORY_LABEL 
 const TODAY = new Date().toISOString().split("T")[0];
 const PRESET_MINUTES = [15, 25, 50, 90];
 
+// モチベーション＆集中力ブーストメッセージ 50個
+const MOTIVATION_MESSAGES = [
+  // 偉人の名言系（13個）
+  "完璧を目指すな。完了を目指せ。",
+  "最初の一歩を踏み出さない限り、道は開かれない。",
+  "今この瞬間が、人生でもっとも大事な瞬間だ。",
+  "やると決めたら、言い訳を消す。",
+  "集中力とは、邪魔を排除する力である。",
+  "1%の改善を毎日積む。それが年で37倍になる。",
+  "苦しいから逃げるのではなく、逃げるから苦しいのだ。",
+  "成功は準備と機会の交点である。",
+  "今日の自分は、昨日の決断の結果だ。",
+  "行動が思考を生む。思考が行動を生むのではない。",
+  "人生は短い。迷ってる時間は最高の無駄だ。",
+  "質問を変えろ。『できるか』ではなく『どうやるか』と問え。",
+  "未来は、今この瞬間の選択で決まる。",
+
+  // 脳科学・集中力メカニズム系（13個）
+  "深い集中は、最初の5分が勝負。まずは始める。",
+  "ドーパミンは報酬で出るのではなく、目標への進捗で出る。",
+  "25分集中＋5分休憩。脳は短周期に最適化している。",
+  "背中を伸ばすだけで脳の覚醒度が15%上がる。",
+  "複数タスク切り替えは集中力を40%低下させる。1つに絞れ。",
+  "目標を声に出すと、脳が優先順位を自動調整する。",
+  "短期記憶は3～4個が限界。今のタスクだけに脳を使え。",
+  "疲労は集中力の敵ではなく、集中の信号だ。その先にフロー状態がある。",
+  "朝日を浴びると、セロトニン分泌が活発になり集中力が1.5倍になる。",
+  "手を動かすことで脳が覚醒する。まずペンを握れ。",
+  "瞬きの回数を減らすと、視覚野への集中が深まる。",
+  "深呼吸1回で副交感神経が優位になり、集中モードに入る。",
+  "脳は『難しい』と認識すると、集中ホルモンを放出する。",
+
+  // 実行系・自分事化メッセージ（16個）
+  "今日のこの30分が、来月の自分を変える。",
+  "迷ってる時間ももったいない。とにかくやる。",
+  "終わった後の達成感のために、今この瞬間に全力を使え。",
+  "プロは気分に左右されない。決めたことを実行する人だ。",
+  "今逃げたら、後で2倍疲れる。今やり切れ。",
+  "スマホは敵。機内モードにしたか確認しろ。",
+  "集中できないのは、目標が曖昧だからだ。『何を』『いつまでに』を言え。",
+  "このタスクが終わったら、自分はどうなってるか想像しろ。",
+  "投資のリターンは『時間 × 集中度』。今が最高の時給だ。",
+  "後でいいや、は永遠に来ない。今やるのが最速だ。",
+  "技術士試験まであと○日。この時間を無駄にするな。",
+  "やり切った自分が、翌日の自分を褒める。その連鎖が人生だ。",
+  "集中してる今、お前はライバルより1日先にいる。",
+  "『疲れた』は心の声じゃなく、脳の言い訳だ。無視しろ。",
+  "人生で最も価値のある資産は『時間』だ。今を大切にしろ。",
+  "完璧な環境を待つな。今ここで最高を出せ。",
+
+  // 短期トリガー系（8個）
+  "あと10分。その10分が月を変える。",
+  "今この瞬間、お前は『できる人』だ。",
+  "スマホを置け。それだけで集中力は3倍になる。",
+  "息を止めるな。深呼吸。リセット。",
+  "音声通知は切ったか？確認しろ。",
+  "ここから先は、別世界だ。没入しろ。",
+  "集中力は筋肉だ。今この瞬間で鍛えてる。",
+  "やらない後悔より、やった疲労。迷うな。",
+];
+
 interface FocusTabProps {
   initialTodo?: TodoV2 | null;
 }
@@ -21,7 +82,16 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
   const [elapsed, setElapsed] = useState(0); // seconds
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const [currentMessage, setCurrentMessage] = useState("");
+  const [shownMessagesToday, setShownMessagesToday] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("v2_shown_messages_today");
+      return new Set(stored ? JSON.parse(stored) : []);
+    }
+    return new Set();
+  });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const messageIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
 
   const fetchData = useCallback(async () => {
@@ -32,6 +102,23 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
     if (todosRes.ok) setTodos(await todosRes.json());
     if (sessionsRes.ok) setSessions(await sessionsRes.json());
   }, []);
+
+  const getRandomMessage = useCallback(() => {
+    const unusedMessages = MOTIVATION_MESSAGES.filter((msg) => !shownMessagesToday.has(msg));
+    const messagesToChoose = unusedMessages.length > 0 ? unusedMessages : MOTIVATION_MESSAGES;
+    const randomMsg = messagesToChoose[Math.floor(Math.random() * messagesToChoose.length)];
+
+    // メッセージを記録
+    const newShown = new Set(shownMessagesToday);
+    newShown.add(randomMsg);
+    setShownMessagesToday(newShown);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("v2_shown_messages_today", JSON.stringify(Array.from(newShown)));
+    }
+
+    return randomMsg;
+  }, [shownMessagesToday]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -61,6 +148,18 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning, plannedMinutes, isFinished]);
 
+  // メッセージローテーション（5分ごと）
+  useEffect(() => {
+    if (isRunning) {
+      messageIntervalRef.current = setInterval(() => {
+        setCurrentMessage(getRandomMessage());
+      }, 5 * 60 * 1000); // 5分
+    } else {
+      if (messageIntervalRef.current) clearInterval(messageIntervalRef.current);
+    }
+    return () => { if (messageIntervalRef.current) clearInterval(messageIntervalRef.current); };
+  }, [isRunning, getRandomMessage]);
+
   const handleStart = async () => {
     // 通知許可を取得
     if ("Notification" in window && Notification.permission === "default") {
@@ -84,6 +183,9 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
       const session = await res.json();
       setActiveSessionId(session.id);
     }
+
+    // 初回メッセージを表示
+    setCurrentMessage(getRandomMessage());
 
     startTimeRef.current = Date.now();
     setElapsed(0);
@@ -227,9 +329,16 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
 
         {/* 集中中のタスク名 */}
         {(isRunning || isFinished) && (
-          <p className="text-gray-400 text-sm mt-2 text-center">
-            {selectedTodo ? `${CATEGORY_EMOJI[selectedTodo.category] ?? ""} ${selectedTodo.title}` : customTitle || "集中作業"}
-          </p>
+          <div className="mt-6 text-center space-y-4">
+            <p className="text-2xl font-bold text-white px-4 break-words leading-relaxed">
+              {selectedTodo ? `${CATEGORY_EMOJI[selectedTodo.category] ?? ""} ${selectedTodo.title}` : customTitle || "集中作業"}
+            </p>
+            {isRunning && currentMessage && (
+              <div className="bg-gradient-to-r from-cyan-900/40 to-blue-900/40 border border-cyan-700/50 rounded-xl p-4 mx-2">
+                <p className="text-sm text-cyan-300 italic">💡 {currentMessage}</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

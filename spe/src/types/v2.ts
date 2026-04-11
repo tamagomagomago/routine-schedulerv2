@@ -1,4 +1,4 @@
-export type V2Category = "video" | "english" | "investment" | "ai" | "personal" | "fitness" | "engineer" | "vfx";
+export type V2Category = "video" | "english" | "investment" | "ai" | "personal" | "fitness" | "engineer" | "vfx" | "life_design";
 export type V2PeriodType = "annual" | "monthly" | "weekly";
 
 export const CATEGORY_LABEL: Record<string, string> = {
@@ -7,6 +7,7 @@ export const CATEGORY_LABEL: Record<string, string> = {
   investment: "投資",
   ai: "生成AI",
   personal: "個人",
+  life_design: "人生設計",
   // レガシーカテゴリー（後方互換性）
   fitness: "フィットネス",
   engineer: "エンジニア",
@@ -19,6 +20,7 @@ export const CATEGORY_EMOJI: Record<string, string> = {
   investment: "💰",
   ai: "🤖",
   personal: "⭐",
+  life_design: "🎯",
   // レガシーカテゴリー（後方互換性）
   fitness: "💪",
   engineer: "📐",
@@ -31,6 +33,7 @@ export const CATEGORY_COLOR: Record<string, string> = {
   investment: "text-green-300 bg-green-900/40 border-green-700",
   ai: "text-pink-300 bg-pink-900/40 border-pink-700",
   personal: "text-gray-300 bg-gray-700/40 border-gray-600",
+  life_design: "text-indigo-300 bg-indigo-900/40 border-indigo-700",
   // レガシーカテゴリー（後方互換性）
   fitness: "text-orange-300 bg-orange-900/40 border-orange-700",
   engineer: "text-teal-300 bg-teal-900/40 border-teal-700",

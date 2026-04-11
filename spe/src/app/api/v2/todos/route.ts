@@ -9,20 +9,15 @@ const supabase = createClient(
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
-  const includeUnscheduled = searchParams.get("include_unscheduled") === "true";
 
   let query = supabase
     .from("todos_v2")
     .select("*")
     .eq("user_id", "default_user")
-    .eq("is_completed", false);
+    .is("goal_id", null);
 
   if (date) {
-    if (includeUnscheduled) {
-      query = query.or(`scheduled_date.eq.${date},scheduled_date.is.null`);
-    } else {
-      query = query.eq("scheduled_date", date);
-    }
+    query = query.eq("scheduled_date", date);
   }
 
   const { data, error } = await query.order("is_mit", { ascending: false })
