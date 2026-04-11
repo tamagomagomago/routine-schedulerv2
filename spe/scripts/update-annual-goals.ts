@@ -131,7 +131,7 @@ async function main() {
             is_achieved: false,
             parent_id: null,
           },
-        ]);
+        ]).select();
 
         if (error) {
           console.error(`❌ INSERT 失敗: ${goal.title}`, error.message);

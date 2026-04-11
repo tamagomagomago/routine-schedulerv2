@@ -57,15 +57,19 @@ export default function GoalsTab() {
   const [otherForm, setOtherForm] = useState({ title: "", category: "personal", estimated_minutes: 30 });
   const [savingOther, setSavingOther] = useState(false);
 
-  const fetchGoals = useCallback(async () => {
-    const res = await fetch("/api/v2/goals");
-    if (res.ok) setGoals(await res.json());
-  }, []);
+  const fetchData = useCallback(async () => {
+    // 並列で2つのAPIリクエストを実行
+    const [goalsRes, todosRes] = await Promise.all([
+      fetch("/api/v2/goals"),
+      fetch("/api/v2/todos"),
+    ]);
 
-  const fetchOtherTodos = useCallback(async () => {
-    const res = await fetch("/api/v2/todos");
-    if (res.ok) {
-      const data = await res.json();
+    // 目標を更新
+    if (goalsRes.ok) setGoals(await goalsRes.json());
+
+    // その他タスクを更新
+    if (todosRes.ok) {
+      const data = await todosRes.json();
       if (Array.isArray(data)) {
         // goal_id なし かつ scheduled_date なし = 純粋な「その他タスク」
         setOtherTodos(data.filter((t: TodoV2) => t.goal_id == null && t.scheduled_date == null));
@@ -74,8 +78,7 @@ export default function GoalsTab() {
   }, []);
 
   useEffect(() => {
-    fetchGoals();
-    fetchOtherTodos();
+    fetchData();
 
     // 初期化時に年間目標を自動追加（存在しない場合）
     const addInitialAnnualGoals = async () => {
@@ -101,13 +104,13 @@ export default function GoalsTab() {
             });
           }
 
-          fetchGoals();
+          fetchData();
         }
       }
     };
 
     addInitialAnnualGoals();
-  }, [fetchGoals, fetchOtherTodos]);
+  }, [fetchData]);
 
   // 月初1日に月間・週間目標セットアップモーダルを表示
   useEffect(() => {
@@ -217,13 +220,13 @@ export default function GoalsTab() {
       body: JSON.stringify({ ...form, current_value: form.current_value ?? 0, parent_id: null }),
     });
     setShowModal(false);
-    fetchGoals();
+    fetchData();
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("削除しますか？")) return;
     await fetch(`/api/v2/goals/${id}`, { method: "DELETE" });
-    fetchGoals();
+    fetchData();
   };
 
   const handleProgress = async (goal: GoalV2, delta: number) => {
@@ -234,7 +237,7 @@ export default function GoalsTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ current_value: newVal, is_achieved: isAchieved }),
     });
-    fetchGoals();
+    fetchData();
   };
 
   const handleAddOtherTodo = async () => {
@@ -254,7 +257,7 @@ export default function GoalsTab() {
     setOtherForm({ title: "", category: "personal", estimated_minutes: 30 });
     setShowOtherForm(false);
     setSavingOther(false);
-    fetchOtherTodos();
+    fetchData();
   };
 
   const handleCompleteOtherTodo = async (id: number) => {
@@ -263,12 +266,12 @@ export default function GoalsTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ is_completed: true }),
     });
-    fetchOtherTodos();
+    fetchData();
   };
 
   const handleDeleteOtherTodo = async (id: number) => {
     await fetch(`/api/v2/todos/${id}`, { method: "DELETE" });
-    fetchOtherTodos();
+    fetchData();
   };
 
   const handleMoveToToday = async (id: number) => {
@@ -277,7 +280,7 @@ export default function GoalsTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scheduled_date: TODAY }),
     });
-    fetchOtherTodos();
+    fetchData();
   };
 
   const getMonthlyDateRange = () => {

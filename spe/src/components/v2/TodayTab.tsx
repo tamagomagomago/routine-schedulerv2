@@ -54,15 +54,21 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   });
   const [loading, setLoading] = useState(false);
 
-  const fetchTodos = useCallback(async () => {
-    const res = await fetch(`/api/v2/todos?date=${TODAY}&include_unscheduled=true`);
-    if (res.ok) setTodos(await res.json());
-  }, []);
+  const fetchData = useCallback(async () => {
+    // 並列で2つのAPIリクエストを実行
+    const [todosRes, goalsRes] = await Promise.all([
+      fetch(`/api/v2/todos?date=${TODAY}&include_unscheduled=true`),
+      fetch("/api/v2/goals"),
+    ]);
 
-  const fetchWeeklyGoals = useCallback(async () => {
-    const res = await fetch("/api/v2/goals");
-    if (res.ok) {
-      const data = await res.json();
+    // TODOを更新
+    if (todosRes.ok) {
+      setTodos(await todosRes.json());
+    }
+
+    // 週間目標を更新
+    if (goalsRes.ok) {
+      const data = await goalsRes.json();
       if (Array.isArray(data)) {
         const { start, end } = getThisWeekRange();
         setWeeklyGoals(
@@ -75,8 +81,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   }, []);
 
   useEffect(() => {
-    fetchTodos();
-    fetchWeeklyGoals();
+    fetchData();
 
     // ダンベルトレーニングを自動追加（平日のみ）
     const day = new Date().getDay();
@@ -103,13 +108,13 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 scheduled_start: "07:00",
               }),
             });
-            fetchTodos();
+            fetchData();
           }
         }
       };
       addDumbbellIfMissing();
     }
-  }, [fetchTodos, fetchWeeklyGoals]);
+  }, [fetchData]);
 
   const handleComplete = async (todo: TodoV2) => {
     await fetch(`/api/v2/todos/${todo.id}`, {
@@ -164,7 +169,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
       });
       setShowForm(false);
       setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", goal_id: undefined });
-      fetchTodos();
+      fetchData();
     } finally {
       setLoading(false);
     }
