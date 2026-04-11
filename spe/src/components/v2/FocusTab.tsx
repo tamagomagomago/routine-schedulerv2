@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { TodoV2, FocusSessionV2, CATEGORY_EMOJI, CATEGORY_COLOR } from "@/types/v2";
+import { TodoV2, FocusSessionV2, CATEGORY_EMOJI, CATEGORY_COLOR, CATEGORY_LABEL } from "@/types/v2";
 
 const TODAY = new Date().toISOString().split("T")[0];
 const PRESET_MINUTES = [15, 25, 50, 90];
@@ -169,7 +169,7 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
                 className="bg-gray-800 text-white border border-gray-700 rounded-xl px-2 py-2 text-sm"
               >
                 {["video", "english", "investment", "ai", "personal"].map((c) => (
-                  <option key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</option>
+                  <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
                 ))}
               </select>
             </div>
