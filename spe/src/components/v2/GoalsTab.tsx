@@ -33,12 +33,13 @@ export default function GoalsTab() {
   const [openMonthly, setOpenMonthly] = useState(true);
   const [openWeekly, setOpenWeekly] = useState(true);
   const [openOther, setOpenOther] = useState(true);
-  const [form, setForm] = useState<CreateGoalV2>({
+  const [form, setForm] = useState<CreateGoalV2 & { current_value?: number }>({
     title: "",
     category: "personal",
     period_type: "annual",
     parent_id: null,
     target_value: undefined,
+    current_value: 0,
     unit: "",
     start_date: TODAY,
     end_date: `${THIS_YEAR}-12-31`,
@@ -68,6 +69,37 @@ export default function GoalsTab() {
   useEffect(() => {
     fetchGoals();
     fetchOtherTodos();
+
+    // 初期化時に年間目標を自動追加（存在しない場合）
+    const addInitialAnnualGoals = async () => {
+      const res = await fetch("/api/v2/goals");
+      if (res.ok) {
+        const goals = await res.json();
+        const annualCount = goals?.filter((g: any) => g.period_type === "annual")?.length ?? 0;
+
+        if (annualCount === 0) {
+          const defaultGoals = [
+            { title: "サイドファイアに向けた投資増強", category: "investment", period_type: "annual", target_value: 1500, unit: "万円", current_value: 1000, start_date: "2026-01-01", end_date: "2026-12-31" },
+            { title: "IELTS Speaking 5.5達成", category: "english", period_type: "annual", target_value: 800, unit: "TOEIC換算点", current_value: 650, start_date: "2026-01-01", end_date: "2026-10-31" },
+            { title: "Instagram フォロワー10,000人", category: "vfx", period_type: "annual", target_value: 10000, unit: "フォロワー", current_value: 12, start_date: "2026-01-01", end_date: "2026-10-31" },
+            { title: "ベンチプレス100kg達成", category: "fitness", period_type: "annual", target_value: 100, unit: "kg", current_value: 85, start_date: "2026-01-01", end_date: "2026-04-30" },
+            { title: "技術士二次試験合格", category: "engineer", period_type: "annual", target_value: 135, unit: "h", current_value: 0, start_date: "2026-01-01", end_date: "2026-07-20" },
+          ];
+
+          for (const goal of defaultGoals) {
+            await fetch("/api/v2/goals", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(goal),
+            });
+          }
+
+          fetchGoals();
+        }
+      }
+    };
+
+    addInitialAnnualGoals();
 
     // 月初1日に通知
     const today = new Date();
@@ -121,6 +153,7 @@ export default function GoalsTab() {
       period_type: periodType ?? "annual",
       parent_id: parentId ?? null,
       target_value: undefined,
+      current_value: 0,
       unit: "",
       ...defaults,
     });
@@ -136,6 +169,7 @@ export default function GoalsTab() {
       period_type: goal.period_type,
       parent_id: goal.parent_id ?? null,
       target_value: goal.target_value ?? undefined,
+      current_value: goal.current_value,
       unit: goal.unit ?? "",
       start_date: goal.start_date,
       end_date: goal.end_date,
@@ -150,7 +184,7 @@ export default function GoalsTab() {
     await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, current_value: editGoal?.current_value ?? 0, parent_id: null }),
+      body: JSON.stringify({ ...form, current_value: form.current_value ?? 0, parent_id: null }),
     });
     setShowModal(false);
     fetchGoals();
@@ -427,10 +461,8 @@ export default function GoalsTab() {
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">現在値</label>
                 <input type="number" placeholder="0"
-                  value={editGoal?.current_value ?? 0}
-                  onChange={(e) => {
-                    if (editGoal) setEditGoal({ ...editGoal, current_value: Number(e.target.value) });
-                  }}
+                  value={form.current_value ?? 0}
+                  onChange={(e) => setForm({ ...form, current_value: Number(e.target.value) })}
                   className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-sm" />
               </div>
               <div>
