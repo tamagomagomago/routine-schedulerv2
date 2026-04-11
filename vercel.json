@@ -1,4 +1,6 @@
 {
+  "buildCommand": "cd spe && npm run build",
+  "outputDirectory": "spe/.next",
   "rewrites": [
     {
       "source": "/(.*)",
