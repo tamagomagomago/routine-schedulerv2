@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   GoalV2, CreateGoalV2, TodoV2,
-  CATEGORY_EMOJI, CATEGORY_COLOR, PRIORITY_LABEL, PRIORITY_COLOR,
+  CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_LABEL, PRIORITY_COLOR,
 } from "@/types/v2";
 
 const CATEGORIES = ["vfx", "english", "engineer", "investment", "fitness", "personal"];
@@ -300,7 +300,7 @@ export default function GoalsTab() {
                 className="flex-1 bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</option>
+                  <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
                 ))}
               </select>
               <input
@@ -379,7 +379,7 @@ export default function GoalsTab() {
                 <label className="text-xs text-gray-500 mb-1 block">カテゴリ</label>
                 <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
                   className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-sm">
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</option>)}
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>)}
                 </select>
               </div>
               <div>
@@ -585,7 +585,7 @@ function GoalCard({ goal, parentLabel, onEdit, onDelete, onProgress }: {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className={`text-xs px-1.5 py-0.5 rounded border ${catColor}`}>{goal.category}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded border ${catColor}`}>{CATEGORY_LABEL[goal.category]}</span>
           {daysLeft > 0 ? (
             <span className="text-xs text-gray-600">残{daysLeft}日</span>
           ) : (

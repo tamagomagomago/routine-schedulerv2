@@ -16,7 +16,7 @@ const CATEGORY_LABEL: Record<GoalCategory, string> = {
   fitness: "フィットネス",
   investment: "投資",
   english: "英語",
-  vfx: "VFX",
+  vfx: "映像",
   personal: "その他",
 };
 

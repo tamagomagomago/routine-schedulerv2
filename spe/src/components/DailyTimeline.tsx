@@ -442,7 +442,7 @@ export default function DailyTimeline({
           <textarea
             value={planFocus}
             onChange={(e) => setPlanFocus(e.target.value)}
-            placeholder={`例：\n朝はVFXのコンポジット作業を90分やって、残りで英語をやりたい。\n夜はSNS投稿とFOOH素材の収集をしたい。`}
+            placeholder={`例：\n朝は映像のコンポジット作業を90分やって、残りで英語をやりたい。\n夜はSNS投稿とFOOH素材の収集をしたい。`}
             rows={4}
             className="w-full bg-gray-800 text-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none border border-gray-600"
           />

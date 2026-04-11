@@ -25,7 +25,7 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  vfx:        "🎬 VFX",
+  vfx:        "🎬 映像",
   english:    "🗣️ 英語",
   investment: "💰 投資",
   fitness:    "💪 筋トレ",

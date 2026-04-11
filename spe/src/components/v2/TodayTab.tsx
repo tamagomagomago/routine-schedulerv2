@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { TodoV2, CreateTodoV2, GoalV2, CATEGORY_EMOJI, CATEGORY_COLOR, PRIORITY_COLOR, PRIORITY_LABEL } from "@/types/v2";
+import { TodoV2, CreateTodoV2, GoalV2, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_COLOR, PRIORITY_LABEL } from "@/types/v2";
 
 const TODAY = new Date().toISOString().split("T")[0];
 const CATEGORIES = ["vfx", "english", "engineer", "investment", "fitness", "personal"];
@@ -289,7 +289,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
                 >
                   {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</option>
+                    <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
                   ))}
                 </select>
               </div>
@@ -405,7 +405,7 @@ function TodoCard({
             {todo.is_mit && <span className="text-red-400 text-xs shrink-0">🎯</span>}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs px-1.5 py-0.5 rounded border ${catColor}`}>{todo.category}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded border ${catColor}`}>{CATEGORY_LABEL[todo.category]}</span>
             <span className={`text-xs px-1.5 py-0.5 rounded border ${priColor}`}>{PRIORITY_LABEL[todo.priority] ?? "中"}</span>
             <span className="text-xs text-gray-600">⏱{todo.estimated_minutes}分</span>
             {todo.scheduled_start && <span className="text-xs text-gray-600">🕐{todo.scheduled_start.slice(0, 5)}</span>}

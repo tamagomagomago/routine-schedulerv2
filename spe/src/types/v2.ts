@@ -1,6 +1,15 @@
 export type V2Category = "vfx" | "english" | "engineer" | "investment" | "fitness" | "personal";
 export type V2PeriodType = "annual" | "monthly" | "weekly";
 
+export const CATEGORY_LABEL: Record<string, string> = {
+  vfx: "映像",
+  english: "英語",
+  engineer: "エンジニア",
+  investment: "投資",
+  fitness: "フィットネス",
+  personal: "個人",
+};
+
 export const CATEGORY_EMOJI: Record<string, string> = {
   vfx: "🎬",
   english: "🗣️",

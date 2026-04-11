@@ -39,7 +39,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  vfx: "VFX",
+  vfx: "映像",
   english: "英語",
   investment: "投資",
   fitness: "フィットネス",
@@ -66,7 +66,7 @@ function ProgressBar({ value, color = "bg-blue-500" }: { value: number; color?: 
 // 週次レビューの実施手順
 const REVIEW_STEPS = [
   { emoji: "📊", text: "今週のTODO完了率を確認する（下の数値を見る）" },
-  { emoji: "🎬", text: "カテゴリ別実績を確認する（VFX・英語・投資・筋トレ）" },
+  { emoji: "🎬", text: "カテゴリ別実績を確認する（映像・英語・投資・筋トレ）" },
   { emoji: "🎯", text: "週次・月次目標の進捗を確認する" },
   { emoji: "📝", text: "来週フォーカスすることを1つ決めて入力する" },
   { emoji: "🤖", text: "「AIに振り返りを生成」を押して改善ポイントを把握する" },

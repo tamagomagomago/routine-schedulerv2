@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS goals_v2 (
   id BIGSERIAL PRIMARY KEY,
   user_id TEXT NOT NULL DEFAULT 'default_user',
   title TEXT NOT NULL,
-  category TEXT NOT NULL, -- fitness, investment, english, vfx, engineer, personal
+  category TEXT NOT NULL, -- fitness, investment, english, vfx(映像), engineer, personal
   period_type TEXT NOT NULL, -- annual, monthly, weekly
   parent_id INTEGER REFERENCES goals_v2(id) ON DELETE SET NULL,
   target_value NUMERIC,
