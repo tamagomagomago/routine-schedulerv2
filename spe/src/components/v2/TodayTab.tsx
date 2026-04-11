@@ -258,7 +258,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               autoFocus
             />
 
