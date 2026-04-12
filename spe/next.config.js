@@ -6,6 +6,15 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/v2',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
