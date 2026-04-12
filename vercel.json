@@ -1,4 +1,8 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next"
+  "builds": [
+    {
+      "src": "spe/package.json",
+      "use": "@vercel/next"
+    }
+  ]
 }
