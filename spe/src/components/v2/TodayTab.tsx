@@ -189,15 +189,24 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   }, [fetchData]);
 
   const handleComplete = async (todo: TodoV2) => {
-    const completed_at = !todo.is_completed ? new Date().toISOString() : null;
+    const newIsCompleted = !todo.is_completed;
+    const completed_at = newIsCompleted ? new Date().toISOString() : null;
+
+    // 即座に UI を更新
+    setTodayTodos((prev) =>
+      prev.map((t) =>
+        t.id === todo.id ? { ...t, is_completed: newIsCompleted, completed_at } : t
+      )
+    );
+
     const res = await fetch(`/api/v2/todos/${todo.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_completed: !todo.is_completed, completed_at }),
+      body: JSON.stringify({ is_completed: newIsCompleted, completed_at }),
     });
 
     // TODOが完了したら、関連する目標の進捗を更新
-    if (res.ok && !todo.is_completed && todo.goal_id) {
+    if (res.ok && newIsCompleted && todo.goal_id) {
       const goal = weeklyGoals.find((g) => g.id === todo.goal_id);
       if (goal) {
         const newValue = (goal.current_value || 0) + (todo.estimated_minutes / 60);
@@ -508,7 +517,14 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             defaultValue={todo.title}
                             onBlur={(e) => handleInlineEditSave(todo.id, "title", e.currentTarget.value)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") handleInlineEditSave(todo.id, "title", e.currentTarget.value);
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleInlineEditSave(todo.id, "title", e.currentTarget.value);
+                              }
+                              if (e.key === "Escape") {
+                                e.preventDefault();
+                                setEditingField(null);
+                              }
                             }}
                             className="flex-1 bg-gray-700 text-white rounded-lg px-2 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
@@ -534,7 +550,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             onBlur={(e) => handleInlineEditSave(todo.id, "time", formatTimeInput(e.currentTarget.value))}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
+                                e.preventDefault();
                                 handleInlineEditSave(todo.id, "time", formatTimeInput(e.currentTarget.value));
+                              }
+                              if (e.key === "Escape") {
+                                e.preventDefault();
+                                setEditingField(null);
                               }
                             }}
                             maxLength={5}
@@ -591,6 +612,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                     placeholder="タスク名 *"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (form.title.trim()) handleSubmit();
+                      }
+                    }}
                     className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autoFocus
                   />
@@ -972,6 +999,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                     placeholder="タスク名 *"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (form.title.trim()) handleSubmit();
+                      }
+                    }}
                     className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autoFocus
                   />
@@ -1028,6 +1061,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                         onChange={(e) => {
                           const formatted = formatTimeInput(e.target.value);
                           setForm({ ...form, scheduled_start: formatted });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (form.title.trim()) handleSubmit();
+                          }
                         }}
                         maxLength={5}
                         className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"

@@ -23,6 +23,16 @@ function getThisWeekRange() {
   };
 }
 
+function getCurrentWeekNumberInMonth() {
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  const firstMonday = new Date(firstDay);
+  firstMonday.setDate(firstDay.getDate() + ((1 - firstDay.getDay() + 7) % 7));
+
+  const weekNumber = Math.floor((today.getDate() - firstMonday.getDate()) / 7) + 1;
+  return Math.max(1, weekNumber);
+}
+
 export default function GoalsTab() {
   const [goals, setGoals] = useState<GoalV2[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -147,9 +157,13 @@ export default function GoalsTab() {
     return s <= lastMonthKey && e >= lastMonthKey;
   });
   const { start: weekStart, end: weekEnd } = getThisWeekRange();
-  const thisWeekGoals = weeklyGoals.filter(
-    (g) => g.start_date <= weekEnd && g.end_date >= weekStart
-  );
+  const currentWeekNumber = getCurrentWeekNumberInMonth();
+  const thisWeekGoals = weeklyGoals.filter((g) => {
+    const goalTitle = g.title || "";
+    const match = goalTitle.match(/第(\d+)週/);
+    const goalWeekNumber = match ? parseInt(match[1]) : null;
+    return goalWeekNumber === currentWeekNumber;
+  });
 
   // 月初1〜5日かつ今月の目標がない場合にリマインダー表示
   const showMonthlyReminder = dayOfMonth <= 5 && thisMonthGoals.length === 0;
