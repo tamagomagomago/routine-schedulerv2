@@ -100,6 +100,8 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<TodoV2> | null>(null);
   const [editingField, setEditingField] = useState<"title" | "time" | "todayTitle" | "todayTime" | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editingPriorityId, setEditingPriorityId] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     const [allRes, todayRes, goalsRes] = await Promise.all([
@@ -289,6 +291,32 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     if (res.ok) {
       setEditingField(null);
       setEditingTodoId(null);
+      fetchData();
+    }
+  };
+
+  const handleCategoryChange = async (id: number, newCategory: string) => {
+    const res = await fetch(`/api/v2/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category: newCategory }),
+    });
+
+    if (res.ok) {
+      setEditingCategoryId(null);
+      fetchData();
+    }
+  };
+
+  const handlePriorityChange = async (id: number, newPriority: number) => {
+    const res = await fetch(`/api/v2/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priority: newPriority }),
+    });
+
+    if (res.ok) {
+      setEditingPriorityId(null);
       fetchData();
     }
   };
@@ -890,6 +918,58 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                 {todo.title}
                               </p>
                             )}
+
+                            {/* カテゴリ + 優先度行 */}
+                            <div className="flex items-center gap-2 text-xs mt-1">
+                              {/* カテゴリドロップダウン */}
+                              {editingCategoryId === todo.id ? (
+                                <select
+                                  autoFocus
+                                  value={todo.category}
+                                  onChange={(e) => handleCategoryChange(todo.id, e.target.value)}
+                                  onBlur={() => setEditingCategoryId(null)}
+                                  className="bg-gray-700 text-white rounded px-2 py-0.5 text-xs"
+                                >
+                                  {CATEGORIES.map((c) => (
+                                    <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingCategoryId(todo.id)}
+                                  className="text-gray-400 hover:text-gray-200 transition-colors"
+                                  title="分類を変更"
+                                >
+                                  {CATEGORY_EMOJI[todo.category] ?? "📌"} {CATEGORY_LABEL[todo.category] || todo.category}
+                                </button>
+                              )}
+
+                              {/* 優先度ボタン */}
+                              {editingPriorityId === todo.id ? (
+                                <div className="flex gap-1">
+                                  {([1, 3, 5] as const).map((p) => (
+                                    <button
+                                      key={p}
+                                      onClick={() => handlePriorityChange(todo.id, p)}
+                                      className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+                                        todo.priority === p ? PRIORITY_COLOR[p] : "border-gray-600 text-gray-500"
+                                      }`}
+                                    >
+                                      {PRIORITY_LABEL[p]}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingPriorityId(todo.id)}
+                                  className={`px-2 py-0.5 rounded text-xs border ${PRIORITY_COLOR[todo.priority]}`}
+                                  title="優先度を変更"
+                                >
+                                  {PRIORITY_LABEL[todo.priority]}
+                                </button>
+                              )}
+                            </div>
+
                             {/* 時刻行 */}
                             {todo.scheduled_start && (
                               <div className="flex items-center gap-2">
@@ -992,113 +1072,32 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 {showForm ? "▲ 閉じる" : "+ タスクを追加"}
               </button>
 
-              {/* 追加フォーム */}
+              {/* 高速追加フォーム */}
               {showForm && (
-                <div className="bg-gray-800 rounded-xl p-4 space-y-3 border border-gray-700">
-                  <input
-                    placeholder="タスク名 *"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        if (form.title.trim()) handleSubmit();
-                      }
-                    }}
-                    className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoFocus
-                  />
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">カテゴリ</label>
-                      <select
-                        value={form.category}
-                        onChange={(e) => setForm({ ...form, category: e.target.value })}
-                        className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
-                      >
-                        {CATEGORIES.map((c) => (
-                          <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">優先度</label>
-                      <div className="flex gap-1">
-                        {([1, 3, 5] as const).map((p) => (
-                          <button
-                            key={p}
-                            onClick={() => setForm({ ...form, priority: p })}
-                            className={`flex-1 py-1.5 rounded text-xs border transition-colors ${
-                              form.priority === p ? PRIORITY_COLOR[p] : "border-gray-600 text-gray-500"
-                            }`}
-                          >
-                            {PRIORITY_LABEL[p]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                <div className="bg-gray-800 rounded-xl p-3 space-y-2 border border-gray-700">
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="タスク名を入力..."
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (form.title.trim()) handleSubmit();
+                        }
+                      }}
+                      className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSubmit}
+                      disabled={loading || !form.title.trim()}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      {loading ? "中..." : "追加"}
+                    </button>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
-                      <input
-                        type="number"
-                        value={form.estimated_minutes}
-                        onChange={(e) => setForm({ ...form, estimated_minutes: Number(e.target.value) })}
-                        min={5}
-                        step={5}
-                        className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">開始時刻（4桁）</label>
-                      <input
-                        type="text"
-                        placeholder="0900"
-                        value={(form.scheduled_start || "").replace(":", "")}
-                        onChange={(e) => {
-                          const formatted = formatTimeInput(e.target.value);
-                          setForm({ ...form, scheduled_start: formatted });
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            if (form.title.trim()) handleSubmit();
-                          }
-                        }}
-                        maxLength={5}
-                        className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {weeklyGoals.length > 0 && (
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">関連する目標（任意）</label>
-                      <select
-                        value={form.goal_id || ""}
-                        onChange={(e) => setForm({ ...form, goal_id: e.target.value ? Number(e.target.value) : undefined })}
-                        className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
-                      >
-                        <option value="">目標を選択...</option>
-                        {weeklyGoals.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {CATEGORY_EMOJI[g.category] ?? "📌"} {g.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleSubmit}
-                    disabled={loading || !form.title.trim()}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    {loading ? "追加中..." : "追加"}
-                  </button>
+                  <p className="text-xs text-gray-500">💡 追加後、詳細は一覧から修正できます</p>
                 </div>
               )}
 
