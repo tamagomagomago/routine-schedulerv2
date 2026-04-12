@@ -25,11 +25,22 @@ function getThisWeekRange() {
 
 function getCurrentWeekNumberInMonth() {
   const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const firstMonday = new Date(firstDay);
-  firstMonday.setDate(firstDay.getDate() + ((1 - firstDay.getDay() + 7) % 7));
+  // 当月の1日が何曜日か（0=日，1=月...）
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const firstDayDayOfWeek = firstDayOfMonth.getDay();
 
-  const weekNumber = Math.floor((today.getDate() - firstMonday.getDate()) / 7) + 1;
+  // 月の初日からの日数
+  const dayOfMonth = today.getDate();
+
+  // 第何週かを計算（月曜スタート）
+  // 月曜=1，日曜=0 になるように調整
+  const adjustedFirstDay = (firstDayDayOfWeek + 6) % 7; // 月曜=0, 日曜=6
+  const adjustedToday = (today.getDay() + 6) % 7; // 月曜=0, 日曜=6
+
+  // 月の1日から今日までのオフセット
+  const daysFromFirstMonday = dayOfMonth - 1 - adjustedFirstDay;
+  const weekNumber = Math.floor(daysFromFirstMonday / 7) + 1;
+
   return Math.max(1, weekNumber);
 }
 
