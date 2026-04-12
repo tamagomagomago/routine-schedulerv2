@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 export default function Home() {
-  return <div>Redirecting...</div>;
+  redirect("/v2");
 }
