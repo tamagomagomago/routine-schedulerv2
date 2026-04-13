@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { TodoV2, CreateTodoV2, GoalV2, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_COLOR, PRIORITY_LABEL } from "@/types/v2";
+import { TodoV2, CreateTodoV2, GoalV2, StreakV2, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_COLOR, PRIORITY_LABEL } from "@/types/v2";
 
 const TODAY = new Date().toISOString().split("T")[0];
 const CATEGORIES = ["video", "english", "investment", "ai", "personal", "fitness", "engineer", "life_design"];
@@ -106,6 +106,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     scheduled_date: TODAY,
     scheduled_start: "",
     description: "",
+    vision: "",
     goal_id: undefined,
   });
   const [loading, setLoading] = useState(false);
@@ -115,12 +116,47 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [editingPriorityId, setEditingPriorityId] = useState<number | null>(null);
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
+  const [showVisionInput, setShowVisionInput] = useState(false);
+  const [todayVisionText, setTodayVisionText] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_today_vision") || "";
+    }
+    return "";
+  });
+  const [todayVisionAchieved, setTodayVisionAchieved] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("v2_today_vision_achieved");
+      return stored === "true";
+    }
+    return false;
+  });
+  const [streaks, setStreaks] = useState<StreakV2[]>([]);
+  const [showStreakSection, setShowStreakSection] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_show_streak_section") !== "false";
+    }
+    return true;
+  });
+  const [streakConfigEdit, setStreakConfigEdit] = useState(false);
+  const [showTodayVisionSection, setShowTodayVisionSection] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_show_today_vision_section") !== "false";
+    }
+    return true;
+  });
+  const [showCompletedSection, setShowCompletedSection] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_show_completed_section") !== "false";
+    }
+    return true;
+  });
 
   const fetchData = useCallback(async () => {
-    const [allRes, todayRes, goalsRes] = await Promise.all([
+    const [allRes, todayRes, goalsRes, streaksRes] = await Promise.all([
       fetch("/api/v2/todos?includeGoalTodos=true"),
       fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`),
       fetch("/api/v2/goals"),
+      fetch("/api/v2/streaks"),
     ]);
 
     if (allRes.ok) {
@@ -148,6 +184,11 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
           })
         );
       }
+    }
+
+    if (streaksRes.ok) {
+      const data = await streaksRes.json();
+      setStreaks(Array.isArray(data) ? data : []);
     }
   }, []);
 
@@ -236,6 +277,15 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
             body: JSON.stringify({ current_value: newValue }),
           });
         }
+      }
+
+      // ストリーク更新
+      if (res.ok) {
+        await fetch(`/api/v2/streaks/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category: todo.category }),
+        });
       }
 
       if (res.ok) fetchData();
@@ -370,6 +420,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         estimated_minutes: editForm.estimated_minutes,
         scheduled_start: editForm.scheduled_start || null,
         description: editForm.description || null,
+        vision: editForm.vision || null,
         goal_id: editForm.goal_id || null,
       }),
     });
@@ -408,7 +459,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
       });
       if (res.ok) {
         setShowForm(false);
-        setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", description: "", goal_id: undefined });
+        setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", description: "", vision: "", goal_id: undefined });
         fetchData();
       }
     } finally {
@@ -424,6 +475,41 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const saveWeeklyPlanningNotes = (notes: string) => {
     setWeeklyPlanningNotes(notes);
     localStorage.setItem("v2_weekly_planning_notes", notes);
+  };
+
+  const saveTodayVision = (text: string) => {
+    setTodayVisionText(text);
+    localStorage.setItem("v2_today_vision", text);
+  };
+
+  const toggleTodayVisionAchieved = () => {
+    const newStatus = !todayVisionAchieved;
+    setTodayVisionAchieved(newStatus);
+    localStorage.setItem("v2_today_vision_achieved", String(newStatus));
+  };
+
+  const toggleStreakSection = (val: boolean) => {
+    setShowStreakSection(val);
+    localStorage.setItem("v2_show_streak_section", String(val));
+  };
+
+  const toggleStreakEnabled = async (category: string, newEnabled: boolean) => {
+    const res = await fetch("/api/v2/streaks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, enabled: newEnabled }),
+    });
+    if (res.ok) fetchData();
+  };
+
+  const toggleTodayVisionSection = (val: boolean) => {
+    setShowTodayVisionSection(val);
+    localStorage.setItem("v2_show_today_vision_section", String(val));
+  };
+
+  const toggleCompletedSection = (val: boolean) => {
+    setShowCompletedSection(val);
+    localStorage.setItem("v2_show_completed_section", String(val));
   };
 
   const todayIncomplete = todayTodos.filter((t) => !t.is_completed);
@@ -571,6 +657,116 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         </div>
       )}
 
+      {/* ストリークセクション */}
+      {(
+        <div className="mx-4 mb-4 bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
+          <button
+            onClick={() => toggleStreakSection(!showStreakSection)}
+            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-orange-400 text-xs font-semibold">🔥 ストリーク</span>
+              {!showStreakSection && (
+                <span className="text-xs text-gray-600 border border-gray-700 px-1.5 py-0.5 rounded">非表示中</span>
+              )}
+            </div>
+            <div className={`w-8 h-4 rounded-full transition-colors relative ${showStreakSection ? "bg-orange-600" : "bg-gray-700"}`}>
+              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showStreakSection ? "translate-x-4" : "translate-x-0.5"}`} />
+            </div>
+          </button>
+          {showStreakSection && (
+            <div className="px-3 pb-3 space-y-2 border-t border-gray-800 pt-3">
+              {streaks.filter(s => s.enabled).map((streak) => (
+                <div key={streak.id} className="bg-gray-800/40 rounded-lg p-2 border border-gray-700/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-lg">{CATEGORY_EMOJI[streak.category] ?? "📌"}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-gray-200">{CATEGORY_LABEL[streak.category] || streak.category}</div>
+                      <div className="text-lg font-bold text-orange-400">{streak.current_streak}日</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleStreakEnabled(streak.category, false)}
+                    className="text-gray-600 hover:text-gray-400 text-xs px-2 py-1"
+                    title="無効化"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {streaks.filter(s => !s.enabled).length > 0 && (
+                <div className="text-xs text-gray-600 border-t border-gray-700/50 pt-2 mt-2">
+                  <p className="mb-2">無効化中のストリーク：</p>
+                  <div className="space-y-1">
+                    {streaks.filter(s => !s.enabled).map((streak) => (
+                      <button
+                        key={streak.id}
+                        onClick={() => toggleStreakEnabled(streak.category, true)}
+                        className="w-full text-left text-gray-500 hover:text-gray-300 text-xs px-2 py-1 rounded hover:bg-gray-800/50 transition-colors"
+                      >
+                        {CATEGORY_EMOJI[streak.category] ?? "📌"} {CATEGORY_LABEL[streak.category] || streak.category} (クリックで有効化)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 今日のTODO達成後の自分（朝に設定） */}
+      <div className={`mx-4 mb-4 rounded-xl overflow-hidden transition-all ${
+        todayVisionText === ""
+          ? "bg-gradient-to-br from-amber-900/60 to-amber-950/60 border-2 border-amber-600/70 ring-2 ring-amber-500/30"
+          : "bg-gradient-to-br from-amber-900/40 to-amber-950/40 border border-amber-700/50"
+      }`}>
+        <button
+          onClick={() => toggleTodayVisionSection(!showTodayVisionSection)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-amber-900/20 transition-colors"
+        >
+          <label className={`text-xs font-bold cursor-pointer ${todayVisionText === "" ? "text-amber-300" : "text-amber-400"}`}>
+            ✨ 今日のTODO達成後の自分（朝に設定）
+          </label>
+          <div className={`w-8 h-4 rounded-full transition-colors relative ${showTodayVisionSection ? "bg-amber-600" : "bg-gray-700"}`}>
+            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showTodayVisionSection ? "translate-x-4" : "translate-x-0.5"}`} />
+          </div>
+        </button>
+        {showTodayVisionSection && (
+        <div className="px-4 pb-3 border-t border-amber-700/50 pt-3">
+          <textarea
+            placeholder="朝に：今日の夜、自分がこんな状態になっていたい、という姿を書く&#10;夜に：実際に達成できたか確認する"
+            value={todayVisionText}
+            onChange={(e) => saveTodayVision(e.target.value)}
+            className="w-full bg-amber-900/30 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500 resize-none"
+            rows={3}
+          />
+          {todayVisionText && (
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                onClick={toggleTodayVisionAchieved}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  todayVisionAchieved
+                    ? "bg-green-700/50 text-green-400 border border-green-600"
+                    : "bg-gray-700/50 text-gray-400 border border-gray-600 hover:bg-gray-700/70"
+                }`}
+              >
+                <span className={`w-4 h-4 border rounded flex items-center justify-center transition-colors ${
+                  todayVisionAchieved ? "bg-green-600 border-green-600" : "border-gray-500"
+                }`}>
+                  {todayVisionAchieved && <span className="text-white text-xs">✓</span>}
+                </span>
+                {todayVisionAchieved ? "達成した" : "達成状態を切り替え"}
+              </button>
+              {todayVisionAchieved && (
+                <span className="text-xs text-green-400">🎉 完璧だ！</span>
+              )}
+            </div>
+          )}
+        </div>
+        )}
+      </div>
+
       {/* タブ切り替え（今週の目標の下） */}
       <div className="px-4 mb-4 flex gap-2">
         <button
@@ -692,6 +888,11 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             📝 補足あり
                           </span>
                         )}
+                        {todo.vision && (
+                          <span className="px-1.5 py-0.5 rounded border border-amber-700 text-amber-400">
+                            ✨ ビジョンあり
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -780,6 +981,26 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                           min={5}
                           step={5}
                           className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">補足（オプション）</label>
+                        <textarea
+                          placeholder="補足情報を入力..."
+                          value={editForm.description || ""}
+                          onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                          className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">ビジョン - 達成後になれる自身（オプション）</label>
+                        <textarea
+                          placeholder="このタスクを完了した後、どんな自分になれるか..."
+                          value={editForm.vision || ""}
+                          onChange={(e) => setEditForm({ ...editForm, vision: e.target.value })}
+                          className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          rows={2}
                         />
                       </div>
                       <div className="flex gap-2 pt-2">
@@ -897,6 +1118,24 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   )}
 
                   <button
+                    type="button"
+                    onClick={() => setShowVisionInput(!showVisionInput)}
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    {showVisionInput ? "▼ ビジョンを閉じる" : "▶ ビジョンを追加"}
+                  </button>
+
+                  {showVisionInput && (
+                    <textarea
+                      placeholder="達成後になれる自身（オプション）"
+                      value={form.vision || ""}
+                      onChange={(e) => setForm({ ...form, vision: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      rows={2}
+                    />
+                  )}
+
+                  <button
                     onClick={() => {
                       if (!form.title.trim()) return;
                       setLoading(true);
@@ -916,7 +1155,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       }).then((res) => {
                         if (res.ok) {
                           setShowForm(false);
-                          setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", description: "", goal_id: undefined });
+                          setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", description: "", vision: "", goal_id: undefined });
                           fetchData();
                         }
                         setLoading(false);
@@ -1060,6 +1299,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                           onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                           className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                           rows={3}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">ビジョン - 達成後になれる自身（オプション）</label>
+                        <textarea
+                          placeholder="このタスクを完了した後、どんな自分になれるか..."
+                          value={editForm.vision || ""}
+                          onChange={(e) => setEditForm({ ...editForm, vision: e.target.value })}
+                          className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          rows={2}
                         />
                       </div>
                       {weeklyGoals.length > 0 && (
@@ -1284,6 +1533,15 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             </div>
                           </details>
                         )}
+                        {todo.vision && (
+                          <details className="mt-2 text-xs">
+                            <summary className="text-amber-400 cursor-pointer hover:text-amber-300 py-1">✨ ビジョンを表示</summary>
+                            <div className="mt-1 p-2 bg-amber-900/30 rounded border border-amber-700 text-amber-100 whitespace-pre-wrap break-words">
+                              <div className="font-semibold text-xs mb-1 text-amber-300">達成後になれる自身</div>
+                              {todo.vision}
+                            </div>
+                          </details>
+                        )}
                       </div>
 
                       {/* アクション - 3行配置 */}
@@ -1325,6 +1583,124 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   </div>
                 );
               })}
+
+              {/* 完了したタスク一覧 */}
+              {todayCompleted.length > 0 && (
+                <div className="border border-gray-700 rounded-xl overflow-hidden bg-gray-900/40">
+                  <button
+                    onClick={() => toggleCompletedSection(!showCompletedSection)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-400 text-xs font-semibold">✅ 完了したタスク</span>
+                      <span className="text-xs text-gray-600">{todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length}件</span>
+                      {!showCompletedSection && (
+                        <span className="text-xs text-gray-600 border border-gray-700 px-1.5 py-0.5 rounded">非表示中</span>
+                      )}
+                    </div>
+                    <div className={`w-8 h-4 rounded-full transition-colors relative ${showCompletedSection ? "bg-green-600" : "bg-gray-700"}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showCompletedSection ? "translate-x-4" : "translate-x-0.5"}`} />
+                    </div>
+                  </button>
+                  {showCompletedSection && (
+                    <>
+                      {/* 統計情報 */}
+                      {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length > 0 && (() => {
+                        const completedTodayTasks = todayCompleted.filter(t => t.completed_at?.startsWith(TODAY));
+                        const totalMinutes = completedTodayTasks.reduce((sum, t) => sum + t.estimated_minutes, 0);
+                        const categoryBreakdown: Record<string, number> = {};
+                        completedTodayTasks.forEach(t => {
+                          categoryBreakdown[t.category] = (categoryBreakdown[t.category] || 0) + t.estimated_minutes;
+                        });
+                        const sortedCategories = Object.entries(categoryBreakdown).sort((a, b) => b[1] - a[1]);
+                        const maxMinutes = Math.max(...sortedCategories.map(([_, min]) => min));
+
+                        return (
+                          <div className="px-3 pb-3 border-t border-gray-800 pt-3 space-y-3">
+                            {/* 総計 */}
+                            <div className="bg-gray-800/30 rounded-lg p-2.5 border border-green-700/40">
+                              <div className="text-xs text-gray-400 mb-1">⏱ 本日の投下時間</div>
+                              <div className="text-2xl font-bold text-green-400">{Math.floor(totalMinutes / 60)}h {totalMinutes % 60}m</div>
+                              <div className="text-xs text-gray-600 mt-1">{totalMinutes}分</div>
+                            </div>
+
+                            {/* カテゴリ別集計 */}
+                            <div className="space-y-2">
+                              <div className="text-xs text-gray-400 font-semibold">カテゴリ別</div>
+                              {sortedCategories.map(([category, minutes]) => {
+                                const percentage = (minutes / maxMinutes) * 100;
+                                return (
+                                  <div key={category} className="space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <div className="flex items-center gap-1.5">
+                                        <span>{CATEGORY_EMOJI[category as keyof typeof CATEGORY_EMOJI] ?? "📌"}</span>
+                                        <span className="text-gray-400">{CATEGORY_LABEL[category as keyof typeof CATEGORY_LABEL] || category}</span>
+                                      </div>
+                                      <span className="text-gray-600">{minutes}分</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                          category === "personal" ? "bg-blue-500" :
+                                          category === "video" ? "bg-red-500" :
+                                          category === "english" ? "bg-yellow-500" :
+                                          category === "investment" ? "bg-green-500" :
+                                          category === "ai" ? "bg-purple-500" :
+                                          category === "fitness" ? "bg-orange-500" :
+                                          category === "engineer" ? "bg-cyan-500" :
+                                          category === "life_design" ? "bg-indigo-500" :
+                                          "bg-gray-600"
+                                        }`}
+                                        style={{ width: `${percentage}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* タスク一覧 */}
+                      <div className="px-3 pb-3 space-y-2 border-t border-gray-800 pt-3">
+                        {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).map((todo) => {
+                    const endTime = todo.scheduled_start
+                      ? addMinutesToTime(todo.scheduled_start, todo.estimated_minutes)
+                      : null;
+                    return (
+                      <div key={todo.id} className="bg-gray-900/60 border border-gray-700 rounded-lg p-2.5 opacity-70">
+                        <div className="flex items-start gap-2">
+                          {/* チェックマーク */}
+                          <span className="text-green-500 text-lg mt-0.5">✓</span>
+                          {/* コンテンツ */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-medium text-sm truncate line-through text-gray-400">
+                              {todo.title}
+                            </p>
+                            <div className="flex items-center gap-2 flex-wrap text-xs mt-1">
+                              <span className={`px-1.5 py-0.5 rounded border ${CATEGORY_COLOR[todo.category] ?? CATEGORY_COLOR.personal}`}>
+                                {CATEGORY_EMOJI[todo.category] ?? "📌"} {CATEGORY_LABEL[todo.category]}
+                              </span>
+                              {todo.scheduled_start && (
+                                <span className="text-gray-500">
+                                  ⏱ {todo.scheduled_start}～{endTime}
+                                </span>
+                              )}
+                              <span className="text-gray-600">
+                                {todo.estimated_minutes}分
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* 追加ボタン */}
               <button
@@ -1441,6 +1817,24 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   )}
 
                   <button
+                    type="button"
+                    onClick={() => setShowVisionInput(!showVisionInput)}
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    {showVisionInput ? "▼ ビジョンを閉じる" : "▶ ビジョンを追加"}
+                  </button>
+
+                  {showVisionInput && (
+                    <textarea
+                      placeholder="達成後になれる自身（オプション）"
+                      value={form.vision || ""}
+                      onChange={(e) => setForm({ ...form, vision: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      rows={2}
+                    />
+                  )}
+
+                  <button
                     onClick={handleSubmit}
                     disabled={loading || !form.title.trim()}
                     className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
@@ -1539,6 +1933,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                 rows={3}
                               />
                             </div>
+                            <div>
+                              <label className="text-xs text-gray-500 mb-1 block">ビジョン - 達成後になれる自身（オプション）</label>
+                              <textarea
+                                placeholder="このタスクを完了した後、どんな自分になれるか..."
+                                value={editForm.vision || ""}
+                                onChange={(e) => setEditForm({ ...editForm, vision: e.target.value })}
+                                className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                rows={2}
+                              />
+                            </div>
                             {weeklyGoals.length > 0 && (
                               <div>
                                 <label className="text-xs text-gray-500 mb-1 block">関連する目標（任意）</label>
@@ -1613,12 +2017,26 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                     📝 補足あり
                                   </span>
                                 )}
+                                {todo.vision && (
+                                  <span className="px-1.5 py-0.5 rounded border border-amber-700 text-amber-400">
+                                    ✨ ビジョンあり
+                                  </span>
+                                )}
                               </div>
                               {todo.description && (
                                 <details className="mt-2 text-xs">
                                   <summary className="text-gray-500 cursor-pointer hover:text-gray-300 py-1">補足を表示</summary>
                                   <div className="mt-1 p-2 bg-gray-800/50 rounded border border-gray-700 text-gray-300 whitespace-pre-wrap break-words">
                                     {todo.description}
+                                  </div>
+                                </details>
+                              )}
+                              {todo.vision && (
+                                <details className="mt-2 text-xs">
+                                  <summary className="text-amber-400 cursor-pointer hover:text-amber-300 py-1">✨ ビジョンを表示</summary>
+                                  <div className="mt-1 p-2 bg-amber-900/30 rounded border border-amber-700 text-amber-100 whitespace-pre-wrap break-words">
+                                    <div className="font-semibold text-xs mb-1 text-amber-300">達成後になれる自身</div>
+                                    {todo.vision}
                                   </div>
                                 </details>
                               )}
