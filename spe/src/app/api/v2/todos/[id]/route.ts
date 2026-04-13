@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     // focus_sessionを作成
-    await supabase
+    const { error: sessionError } = await supabase
       .from("focus_sessions_v2")
       .insert({
         user_id: "default_user",
@@ -73,6 +73,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         started_at: startDateTime,
         ended_at: new Date().toISOString(),
       });
+
+    if (sessionError) {
+      console.error(`Failed to create focus session for todo ${params.id}:`, sessionError);
+      // エラーでもTODOの完了は成功させる（focus_sessionは後から作成される可能性）
+    }
   }
 
   return NextResponse.json(data);
