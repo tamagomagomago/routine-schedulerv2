@@ -853,15 +853,20 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
           }}
           className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-amber-900/20 transition-colors"
         >
-          <label className={`text-xs font-bold cursor-pointer ${
-            todayVisionText === "" && !todayVisionConfirmed
-              ? "text-amber-100 text-sm"
-              : todayVisionText === ""
-              ? "text-amber-300"
-              : "text-amber-400"
-          }`}>
-            ✨ 今日のTODO達成後の自分（朝に設定）{todayVisionText === "" && !todayVisionConfirmed && <span className="animate-pulse"> ●</span>}
-          </label>
+          <div className="flex items-center gap-2 flex-1">
+            <label className={`text-xs font-bold cursor-pointer ${
+              todayVisionText === "" && !todayVisionConfirmed
+                ? "text-amber-100 text-sm"
+                : todayVisionText === ""
+                ? "text-amber-300"
+                : "text-amber-400"
+            }`}>
+              ✨ 今日のTODO達成後の自分（朝に設定）
+            </label>
+            {todayVisionText === "" && !todayVisionConfirmed && (
+              <span className="text-amber-100 animate-pulse text-xs">●</span>
+            )}
+          </div>
           <div className={`w-8 h-4 rounded-full transition-colors relative ${showTodayVisionSection ? "bg-amber-600" : "bg-gray-700"}`}>
             <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showTodayVisionSection ? "translate-x-4" : "translate-x-0.5"}`} />
           </div>
