@@ -753,31 +753,29 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         </div>
       )}
 
-      {/* 今週の方針（メモ） */}
-      {showWeeklyGoals && weeklyGoals.length > 0 && (
-        <div className="mx-4 mb-4 bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setShowWeeklyPlanningForm(!showWeeklyPlanningForm)}
-            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
-          >
-            <span className="text-blue-400 text-xs font-semibold">📝 今週の方針</span>
-            <div className={`w-8 h-4 rounded-full transition-colors relative ${showWeeklyPlanningForm ? "bg-blue-600" : "bg-gray-700"}`}>
-              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showWeeklyPlanningForm ? "translate-x-4" : "translate-x-0.5"}`} />
-            </div>
-          </button>
-          {showWeeklyPlanningForm && (
-            <div className="px-3 pb-3 border-t border-gray-800 pt-3">
-              <textarea
-                value={weeklyPlanningNotes}
-                onChange={(e) => saveWeeklyPlanningNotes(e.target.value)}
-                placeholder="今週のタスクが多い時に、どのタスクを優先するか、どんなペースで進めるかなど、戦略をメモしておきましょう..."
-                className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-24"
-              />
-              <p className="text-xs text-gray-600 mt-2">💡 このメモは今週のタスク配置の参考になります</p>
-            </div>
-          )}
-        </div>
-      )}
+      {/* 今週の方針（メモ）- 常に表示 */}
+      <div className="mx-4 mb-4 bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowWeeklyPlanningForm(!showWeeklyPlanningForm)}
+          className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
+        >
+          <span className="text-blue-400 text-xs font-semibold">📝 今週の方針</span>
+          <div className={`w-8 h-4 rounded-full transition-colors relative ${showWeeklyPlanningForm ? "bg-blue-600" : "bg-gray-700"}`}>
+            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showWeeklyPlanningForm ? "translate-x-4" : "translate-x-0.5"}`} />
+          </div>
+        </button>
+        {showWeeklyPlanningForm && (
+          <div className="px-3 pb-3 border-t border-gray-800 pt-3">
+            <textarea
+              value={weeklyPlanningNotes}
+              onChange={(e) => saveWeeklyPlanningNotes(e.target.value)}
+              placeholder="今週のタスクが多い時に、どのタスクを優先するか、どんなペースで進めるかなど、戦略をメモしておきましょう..."
+              className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-24"
+            />
+            <p className="text-xs text-gray-600 mt-2">💡 このメモは今週のタスク配置の参考になります</p>
+          </div>
+        )}
+      </div>
 
       {/* ストリークセクション */}
       {(

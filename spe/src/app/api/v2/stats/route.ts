@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     rate: r.achievement_rate ?? 0,
   }));
 
-  // 今週の日別実施時間
+  // 今週の日別実施時間（カテゴリ別）
   const today = new Date();
   const dayOfWeek = today.getDay();
   const weekMonday = new Date(today);
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
   weekSunday.setDate(weekMonday.getDate() + 6);
   weekSunday.setHours(23, 59, 59, 999);
 
-  const dailyMap: Record<string, number> = {};
+  const dailyMapByCategory: Record<string, Record<string, number>> = {};
   const dayLabels = ["月", "火", "水", "木", "金", "土", "日"];
 
   // 初期化（月～日）
@@ -75,27 +75,28 @@ export async function GET(req: NextRequest) {
     const d = new Date(weekMonday);
     d.setDate(weekMonday.getDate() + i);
     const dateStr = d.toISOString().split("T")[0];
-    dailyMap[dateStr] = 0;
+    dailyMapByCategory[dateStr] = {};
   }
 
-  // 今週のセッションを集計
+  // 今週のセッションをカテゴリ別に集計
   (sessions ?? []).forEach((s) => {
     const d = new Date(s.started_at);
     const dateStr = d.toISOString().split("T")[0];
     if (dateStr >= weekMonday.toISOString().split("T")[0] && dateStr <= weekSunday.toISOString().split("T")[0]) {
-      dailyMap[dateStr] = (dailyMap[dateStr] ?? 0) + (s.actual_minutes ?? s.planned_minutes ?? 0);
+      const minutes = s.actual_minutes ?? s.planned_minutes ?? 0;
+      dailyMapByCategory[dateStr][s.category] = (dailyMapByCategory[dateStr][s.category] ?? 0) + minutes;
     }
   });
 
-  const weeklyDaily = Object.entries(dailyMap)
+  const weeklyDaily = Object.entries(dailyMapByCategory)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, minutes], idx) => {
+    .map(([date, categoryData], idx) => {
       const d = new Date(date);
       const month = d.getMonth() + 1;
-      const day = d.getDate();
+      const dayNum = d.getDate();
       return {
-        day: `${dayLabels[idx]} ${month}/${day}`,
-        minutes,
+        day: `${dayLabels[idx]} ${month}/${dayNum}`,
+        categories: categoryData,
       };
     });
 

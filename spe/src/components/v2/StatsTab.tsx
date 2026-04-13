@@ -8,7 +8,7 @@ interface StatsData {
   focusByCategory: Record<string, number>;
   weeklyFocus: { week: string; minutes: number }[];
   goalAchievementTrend: { week: string; rate: number }[];
-  weeklyDaily?: { day: string; minutes: number }[];
+  weeklyDaily?: { day: string; categories: Record<string, number> }[];
 }
 
 const BAR_COLORS: Record<string, string> = {
@@ -72,11 +72,17 @@ export default function StatsTab() {
     rate: t.rate,
   }));
 
+  // weeklyDaily をフラット化してカテゴリをトップレベルキーにする
+  const weeklyDailyFlat = (stats?.weeklyDaily ?? []).map((day) => ({
+    day: day.day,
+    ...day.categories,
+  }));
+
   return (
     <div className="pb-24 px-4 pt-4 space-y-6">
       {/* カテゴリ別集中時間 */}
       <section>
-        <h3 className="text-yellow-400 text-sm font-semibold mb-3">📊 今月のカテゴリ別集中時間</h3>
+        <h3 className="text-yellow-400 text-sm font-semibold mb-3">📊 過去4週間のカテゴリ別集中時間</h3>
         {catData.length === 0 ? (
           <p className="text-gray-600 text-xs text-center py-4">データなし</p>
         ) : (
@@ -124,22 +130,43 @@ export default function StatsTab() {
         </section>
       )}
 
-      {/* 今週の日別実施時間 */}
-      {stats?.weeklyDaily && stats.weeklyDaily.length > 0 && (
+      {/* 今週の日別実施時間（カテゴリ別） */}
+      {weeklyDailyFlat.length > 0 && (
         <section>
-          <h3 className="text-yellow-400 text-sm font-semibold mb-3">📅 今週の日別実施時間</h3>
-          <ResponsiveContainer width="100%" height={140}>
-            <BarChart data={stats.weeklyDaily} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+          <h3 className="text-yellow-400 text-sm font-semibold mb-3">📅 今週の日別実施時間（カテゴリ別）</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={weeklyDailyFlat} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
               <XAxis dataKey="day" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: "#e5e7eb" }}
-                formatter={(v: number) => [`${v}分`, "実施時間"]}
+                formatter={(v: number) => `${v}分`}
               />
-              <Bar dataKey="minutes" radius={[4, 4, 0, 0]} fill="#10b981" />
+              {/* 各カテゴリのバーを積み重ねる */}
+              {Object.keys(BAR_COLORS).map((category) => (
+                <Bar
+                  key={category}
+                  dataKey={category}
+                  stackId="a"
+                  fill={BAR_COLORS[category]}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
+          {/* カテゴリ凡例 */}
+          <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+            {Object.entries(BAR_COLORS).map(([category, color]) => {
+              const totalMinutes = weeklyDailyFlat.reduce((sum, day) => sum + (day[category as keyof typeof day] ?? 0), 0);
+              return totalMinutes > 0 ? (
+                <div key={category} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
+                  <span className="text-gray-400">{category}</span>
+                </div>
+              ) : null;
+            })}
+          </div>
         </section>
       )}
 

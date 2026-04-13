@@ -40,6 +40,41 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 完了時はfocus_sessionを作成
+  if (body.is_completed === true && data) {
+    const todo = data;
+
+    // 開始時刻を計算（scheduled_date + scheduled_start）
+    let startDateTime: string;
+    if (todo.scheduled_date && todo.scheduled_start) {
+      // 例：2026-04-13 + 09:30 → 2026-04-13T09:30:00Z
+      const [year, month, day] = todo.scheduled_date.split("-");
+      const [hour, minute] = todo.scheduled_start.split(":");
+      startDateTime = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`).toISOString();
+    } else {
+      // scheduled_start がない場合は、現在時刻から見積分を遡る
+      const now = new Date();
+      const estimatedMinutes = todo.estimated_minutes || 0;
+      const startTime = new Date(now.getTime() - estimatedMinutes * 60000);
+      startDateTime = startTime.toISOString();
+    }
+
+    // focus_sessionを作成
+    await supabase
+      .from("focus_sessions_v2")
+      .insert({
+        user_id: "default_user",
+        todo_id: parseInt(params.id),
+        todo_title: todo.title,
+        category: todo.category,
+        planned_minutes: todo.estimated_minutes || 0,
+        actual_minutes: todo.estimated_minutes || 0,
+        started_at: startDateTime,
+        ended_at: new Date().toISOString(),
+      });
+  }
+
   return NextResponse.json(data);
 }
 
