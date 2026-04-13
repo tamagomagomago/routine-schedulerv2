@@ -129,12 +129,19 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const [editingPriorityId, setEditingPriorityId] = useState<number | null>(null);
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
   const [showVisionInput, setShowVisionInput] = useState(false);
-  const [todayVisionText, setTodayVisionText] = useState<string>(() => {
+  const [weeklyVisionMonday, setWeeklyVisionMonday] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("v2_today_vision") || "";
+      return localStorage.getItem("v2_weekly_vision_monday") || "";
     }
     return "";
   });
+  const [weeklyVisionSunday, setWeeklyVisionSunday] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_weekly_vision_sunday") || "";
+    }
+    return "";
+  });
+  const [todayVisionText, setTodayVisionText] = useState<string>("");
   const [todayVisionAchieved, setTodayVisionAchieved] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("v2_today_vision_achieved");
@@ -144,7 +151,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   });
   const [todayVisionConfirmed, setTodayVisionConfirmed] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("v2_today_vision_confirmed");
+      const stored = localStorage.getItem("v2_weekly_vision_confirmed");
       return stored === "true";
     }
     return false;
@@ -271,16 +278,19 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   // Vision モーダルを初回ロード時に表示
   useEffect(() => {
-    if (todayVisionText === "" && !todayVisionConfirmed) {
+    if ((weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed) {
       setShowVisionModal(true);
     }
   }, []);
 
   const handleVisionConfirm = (text: string) => {
-    if (text.trim()) {
-      setTodayVisionText(text);
-      localStorage.setItem("v2_today_vision", text);
-      localStorage.setItem("v2_today_vision_confirmed", "true");
+    const [monday, sunday] = text.split("---").map(s => s.trim());
+    if (monday || sunday) {
+      setWeeklyVisionMonday(monday);
+      setWeeklyVisionSunday(sunday);
+      localStorage.setItem("v2_weekly_vision_monday", monday);
+      localStorage.setItem("v2_weekly_vision_sunday", sunday);
+      localStorage.setItem("v2_weekly_vision_confirmed", "true");
       setTodayVisionConfirmed(true);
       setShowVisionModal(false);
       setVisionModalText("");
@@ -292,9 +302,14 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     setVisionModalText("");
   };
 
-  const handleCompleteVisionEdit = (text: string) => {
-    if (text.trim()) {
-      localStorage.setItem("v2_today_vision_confirmed", "true");
+  const openVisionModal = () => {
+    setVisionModalText(weeklyVisionMonday + "---" + weeklyVisionSunday);
+    setShowVisionModal(true);
+  };
+
+  const handleCompleteVisionEdit = () => {
+    if (weeklyVisionMonday.trim() || weeklyVisionSunday.trim()) {
+      localStorage.setItem("v2_weekly_vision_confirmed", "true");
       setTodayVisionConfirmed(true);
     }
   };
@@ -549,10 +564,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     localStorage.setItem("v2_weekly_planning_notes", notes);
   };
 
-  const saveTodayVision = (text: string) => {
-    setTodayVisionText(text);
-    localStorage.setItem("v2_today_vision", text);
-  };
 
   const toggleTodayVisionAchieved = () => {
     const newStatus = !todayVisionAchieved;
@@ -619,16 +630,37 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-amber-600 rounded-2xl max-w-md w-full shadow-2xl">
             <div className="p-6">
-              <h3 className="text-lg font-bold text-amber-300 mb-2">✨ 今日の目標を設定</h3>
-              <p className="text-sm text-gray-400 mb-4">朝に：今日の夜、自分がこんな状態になっていたい、という姿を書いてください</p>
-              <textarea
-                autoFocus
-                placeholder="例：仕事を集中力を持って完了させ、疲れていても充実感を感じている"
-                value={visionModalText}
-                onChange={(e) => setVisionModalText(e.target.value)}
-                className="w-full bg-gray-800 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-600 resize-none"
-                rows={4}
-              />
+              <h3 className="text-lg font-bold text-amber-300 mb-2">✨ 今週のTODO達成後の自分を設定</h3>
+              <p className="text-sm text-gray-400 mb-4">月曜日時点の自分と、日曜日になりたい自分を書いてください</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-amber-300 font-semibold block mb-1">📍 月曜日時点の自分（現在地）</label>
+                  <textarea
+                    autoFocus
+                    placeholder="例：疲れている、やることが多い感覚を持っている"
+                    value={visionModalText.split("---")[0] || ""}
+                    onChange={(e) => {
+                      const sunday = visionModalText.split("---")[1] || "";
+                      setVisionModalText(e.target.value + (sunday ? "---" + sunday : ""));
+                    }}
+                    className="w-full bg-gray-800 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-600 resize-none"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-amber-300 font-semibold block mb-1">🎯 日曜日になりたい自分（目標）</label>
+                  <textarea
+                    placeholder="例：やることをやり切った充実感、成長を実感している"
+                    value={visionModalText.split("---")[1] || ""}
+                    onChange={(e) => {
+                      const monday = visionModalText.split("---")[0] || "";
+                      setVisionModalText(monday + "---" + e.target.value);
+                    }}
+                    className="w-full bg-gray-800 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-600 resize-none"
+                    rows={3}
+                  />
+                </div>
+              </div>
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={handleVisionCancel}
@@ -846,16 +878,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
       {/* 今週のTODO達成後の自分 */}
       <div className={`mx-4 mb-4 rounded-xl overflow-hidden transition-all ${
-        todayVisionText === "" && !todayVisionConfirmed
+        (weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed
           ? "bg-gradient-to-br from-amber-800 to-amber-950 border-2 border-amber-500 ring-2 ring-amber-400/50 shadow-lg shadow-amber-600/30"
-          : todayVisionText === ""
+          : (weeklyVisionMonday === "" && weeklyVisionSunday === "")
           ? "bg-gradient-to-br from-amber-900/60 to-amber-950/60 border-2 border-amber-600/70 ring-2 ring-amber-500/30"
           : "bg-gradient-to-br from-amber-900/40 to-amber-950/40 border border-amber-700/50"
       }`}>
         <button
           onClick={() => {
-            if (todayVisionText === "" && !todayVisionConfirmed) {
-              setShowVisionModal(true);
+            if ((weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed) {
+              openVisionModal();
             } else {
               toggleTodayVisionSection(!showTodayVisionSection);
             }
@@ -864,15 +896,15 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         >
           <div className="flex items-center gap-2 flex-1">
             <label className={`text-xs font-bold cursor-pointer ${
-              todayVisionText === "" && !todayVisionConfirmed
+              (weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed
                 ? "text-amber-100 text-sm"
-                : todayVisionText === ""
+                : (weeklyVisionMonday === "" && weeklyVisionSunday === "")
                 ? "text-amber-300"
                 : "text-amber-400"
             }`}>
               ✨ 今週のTODO達成後の自分
             </label>
-            {todayVisionText === "" && !todayVisionConfirmed && (
+            {(weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed && (
               <span className="text-amber-100 animate-pulse text-xs">●</span>
             )}
           </div>
@@ -881,22 +913,42 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
           </div>
         </button>
         {showTodayVisionSection && (
-        <div className="px-4 pb-3 border-t border-amber-700/50 pt-3">
-          <textarea
-            placeholder="月曜朝に：今週を通じて達成したい状態、なりたい自分を書く&#10;日曜夜に：現状と比較して、実際に達成・成長できたか確認する"
-            value={todayVisionText}
-            onChange={(e) => {
-              saveTodayVision(e.target.value);
-              // 編集されたら確認フラグをリセット
-              if (todayVisionConfirmed && todayVisionText !== e.target.value) {
-                setTodayVisionConfirmed(false);
-                localStorage.setItem("v2_today_vision_confirmed", "false");
-              }
-            }}
-            className="w-full bg-amber-900/30 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500 resize-none"
-            rows={3}
-          />
-          {todayVisionText && (
+        <div className="px-4 pb-3 border-t border-amber-700/50 pt-3 space-y-3">
+          <div>
+            <label className="text-xs text-amber-300 font-semibold block mb-2">📍 月曜日時点の自分（現在地）</label>
+            <textarea
+              placeholder="例：疲れている、やることが多い感覚を持っている"
+              value={weeklyVisionMonday}
+              onChange={(e) => {
+                setWeeklyVisionMonday(e.target.value);
+                localStorage.setItem("v2_weekly_vision_monday", e.target.value);
+                if (todayVisionConfirmed) {
+                  setTodayVisionConfirmed(false);
+                  localStorage.setItem("v2_weekly_vision_confirmed", "false");
+                }
+              }}
+              className="w-full bg-amber-900/30 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500 resize-none"
+              rows={2}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-amber-300 font-semibold block mb-2">🎯 日曜日になりたい自分（目標）</label>
+            <textarea
+              placeholder="例：やることをやり切った充実感、成長を実感している"
+              value={weeklyVisionSunday}
+              onChange={(e) => {
+                setWeeklyVisionSunday(e.target.value);
+                localStorage.setItem("v2_weekly_vision_sunday", e.target.value);
+                if (todayVisionConfirmed) {
+                  setTodayVisionConfirmed(false);
+                  localStorage.setItem("v2_weekly_vision_confirmed", "false");
+                }
+              }}
+              className="w-full bg-amber-900/30 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500 resize-none"
+              rows={2}
+            />
+          </div>
+          {(weeklyVisionMonday || weeklyVisionSunday) && (
             <div className="mt-3 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <button
@@ -918,9 +970,9 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   <span className="text-xs text-green-400">🎉 完璧だ！</span>
                 )}
               </div>
-              {!todayVisionConfirmed && todayVisionText && (
+              {!todayVisionConfirmed && (weeklyVisionMonday || weeklyVisionSunday) && (
                 <button
-                  onClick={() => handleCompleteVisionEdit(todayVisionText)}
+                  onClick={() => handleCompleteVisionEdit()}
                   className="w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-medium transition-colors"
                 >
                   設定完了
