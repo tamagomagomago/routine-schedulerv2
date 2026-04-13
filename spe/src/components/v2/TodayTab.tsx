@@ -116,14 +116,14 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   const fetchData = useCallback(async () => {
     const [allRes, todayRes, goalsRes] = await Promise.all([
-      fetch("/api/v2/todos"),
-      fetch(`/api/v2/todos?date=${TODAY}`),
+      fetch("/api/v2/todos?includeGoalTodos=true"),
+      fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`),
       fetch("/api/v2/goals"),
     ]);
 
     if (allRes.ok) {
       const data = await allRes.json();
-      // TODOリストは「今日の日付が設定されていない」もののみ
+      // TODOリストは「今日の日付が設定されていない」もものみ（goal_idは関係なく表示）
       setAllTodos(Array.isArray(data) ? data.filter((t: TodoV2) => !t.scheduled_date || t.scheduled_date !== TODAY) : []);
     }
 
@@ -484,21 +484,54 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 const progress = g.target_value
                   ? Math.min(100, Math.round((g.current_value / g.target_value) * 100))
                   : null;
+                // この目標に関連するTODOを取得
+                const relatedTodos = todayTodos.filter((t) => t.goal_id === g.id);
+                const completedTodos = relatedTodos.filter((t) => t.is_completed).length;
+
                 return (
-                  <div key={g.id} className="pt-2">
+                  <div key={g.id} className="pt-2 bg-gray-800/40 rounded-lg p-2 border border-gray-700/50">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm">{CATEGORY_EMOJI[g.category] ?? "📌"}</span>
-                      <p className="text-xs text-gray-200 flex-1 truncate">{g.title}</p>
+                      <p className="text-xs text-gray-200 flex-1">{g.title}</p>
                       {progress !== null && (
-                        <span className="text-xs text-gray-500 shrink-0">{progress}%</span>
+                        <span className="text-xs text-gray-500 shrink-0 font-medium">{progress}%</span>
                       )}
                     </div>
                     {progress !== null && (
-                      <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden ml-5">
-                        <div
-                          className={`h-full rounded-full ${g.is_achieved ? "bg-green-500" : "bg-blue-500"}`}
-                          style={{ width: `${progress}%` }}
-                        />
+                      <div className="mb-1">
+                        <div className="text-xs text-gray-500 mb-0.5">
+                          {g.current_value} / {g.target_value} {g.unit}
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${g.is_achieved ? "bg-green-500" : "bg-blue-500"}`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {/* 関連するTODO */}
+                    {relatedTodos.length > 0 && (
+                      <div className="mt-2 text-xs space-y-1">
+                        <div className="text-gray-400">関連タスク: {completedTodos}/{relatedTodos.length}</div>
+                        <div className="space-y-0.5">
+                          {relatedTodos.slice(0, 2).map((todo) => (
+                            <div
+                              key={todo.id}
+                              className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${
+                                todo.is_completed
+                                  ? "bg-green-900/30 text-green-400"
+                                  : "bg-gray-700/50 text-gray-300"
+                              }`}
+                            >
+                              <span>{todo.is_completed ? "✓" : "○"}</span>
+                              <span className="truncate">{todo.title}</span>
+                            </div>
+                          ))}
+                          {relatedTodos.length > 2 && (
+                            <div className="text-gray-500 px-1.5">他 {relatedTodos.length - 2} 件</div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

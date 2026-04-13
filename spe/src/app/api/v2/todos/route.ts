@@ -9,12 +9,18 @@ const supabase = createClient(
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
+  const includeGoalTodos = searchParams.get("includeGoalTodos") === "true";
 
   let query = supabase
     .from("todos_v2")
     .select("*")
-    .eq("user_id", "default_user")
-    .is("goal_id", null);
+    .eq("user_id", "default_user");
+
+  // デフォルトでは goal_id: null のTODOのみ返す（TODOリスト用）
+  // includeGoalTodos=true の場合はすべてのTODOを返す
+  if (!includeGoalTodos) {
+    query = query.is("goal_id", null);
+  }
 
   if (date) {
     query = query.eq("scheduled_date", date);
