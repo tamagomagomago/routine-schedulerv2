@@ -1365,7 +1365,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           ...form,
-                          scheduled_date: null,
+                          scheduled_date: TODAY,
                           scheduled_start: formattedStart,
                           goal_id: null,
                         }),
@@ -1374,7 +1374,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                           setShowForm(false);
                           setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", description: "", vision: "", goal_id: undefined });
                           fetchData();
+                        } else {
+                          console.error("Failed to add TODO:", res.status, res.statusText);
                         }
+                        setLoading(false);
+                      }).catch((err) => {
+                        console.error("Error adding TODO:", err);
                         setLoading(false);
                       });
                     }}
