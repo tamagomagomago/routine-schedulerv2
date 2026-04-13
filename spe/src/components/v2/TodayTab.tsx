@@ -844,8 +844,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         </div>
       )}
 
-      {/* 今週のTODO達成後の自分（月曜朝に設定） */}
-      {new Date().getDay() === 1 && (
+      {/* 今週のTODO達成後の自分 */}
       <div className={`mx-4 mb-4 rounded-xl overflow-hidden transition-all ${
         todayVisionText === "" && !todayVisionConfirmed
           ? "bg-gradient-to-br from-amber-800 to-amber-950 border-2 border-amber-500 ring-2 ring-amber-400/50 shadow-lg shadow-amber-600/30"
@@ -871,7 +870,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 ? "text-amber-300"
                 : "text-amber-400"
             }`}>
-              ✨ 今週のTODO達成後の自分（月曜朝に設定）
+              ✨ 今週のTODO達成後の自分
             </label>
             {todayVisionText === "" && !todayVisionConfirmed && (
               <span className="text-amber-100 animate-pulse text-xs">●</span>
@@ -932,7 +931,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         </div>
         )}
       </div>
-      )}
 
       {/* タブ切り替え（今週の目標の下） */}
       <div className="px-4 mb-4 flex gap-2">
