@@ -1285,32 +1285,101 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 {showForm ? "▲ 閉じる" : "+ タスクを追加"}
               </button>
 
-              {/* 高速追加フォーム */}
+              {/* 詳細入力フォーム */}
               {showForm && (
-                <div className="bg-gray-800 rounded-xl p-3 space-y-2 border border-gray-700">
-                  <div className="flex gap-2">
-                    <input
-                      placeholder="タスク名を入力..."
-                      value={form.title}
-                      onChange={(e) => setForm({ ...form, title: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                          e.preventDefault();
-                          if (form.title.trim()) handleSubmit();
-                        }
-                      }}
-                      className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleSubmit}
-                      disabled={loading || !form.title.trim()}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      {loading ? "中..." : "追加"}
-                    </button>
+                <div className="bg-gray-800 rounded-xl p-4 space-y-3 border border-gray-700">
+                  <input
+                    placeholder="タスク名 *"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                        e.preventDefault();
+                        if (form.title.trim()) handleSubmit();
+                      }
+                    }}
+                    className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">カテゴリ</label>
+                      <select
+                        value={form.category}
+                        onChange={(e) => setForm({ ...form, category: e.target.value })}
+                        className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                      >
+                        {CATEGORIES.map((c) => (
+                          <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">優先度</label>
+                      <div className="flex gap-1">
+                        {([1, 3, 5] as const).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setForm({ ...form, priority: p })}
+                            className={`flex-1 py-1.5 rounded text-xs border transition-colors ${
+                              form.priority === p ? PRIORITY_COLOR[p] : "border-gray-600 text-gray-500"
+                            }`}
+                          >
+                            {PRIORITY_LABEL[p]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500">💡 追加後、詳細は一覧から修正できます</p>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
+                      <input
+                        type="number"
+                        value={form.estimated_minutes}
+                        onChange={(e) => setForm({ ...form, estimated_minutes: Number(e.target.value) })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (form.title.trim()) handleSubmit();
+                          }
+                        }}
+                        min={5}
+                        step={5}
+                        className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">開始時刻（4桁）</label>
+                      <input
+                        type="text"
+                        placeholder="0900"
+                        value={(form.scheduled_start || "").replace(":", "")}
+                        onChange={(e) => {
+                          const formatted = formatTimeInput(e.target.value);
+                          setForm({ ...form, scheduled_start: formatted });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (form.title.trim()) handleSubmit();
+                          }
+                        }}
+                        maxLength={5}
+                        className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSubmit}
+                    disabled={loading || !form.title.trim()}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {loading ? "追加中..." : "追加"}
+                  </button>
                 </div>
               )}
 
