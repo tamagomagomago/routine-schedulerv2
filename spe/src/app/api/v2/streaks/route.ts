@@ -10,16 +10,21 @@ const supabase = createClient(
 // GET /api/v2/streaks - get all streaks
 export async function GET() {
   try {
+    console.log("GET /api/v2/streaks - Fetching streaks");
     const { data, error } = await supabase
       .from("streaks")
       .select("id, category, current_streak, last_completed_date, enabled, created_at, updated_at")
       .order("category", { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error in GET /api/v2/streaks:", error);
+      throw error;
+    }
+    console.log("GET /api/v2/streaks - Success, returned", (data || []).length, "streaks");
     return NextResponse.json((data || []) as StreakV2[]);
   } catch (error) {
     console.error("Error fetching streaks:", error);
-    return NextResponse.json({ error: "Failed to fetch streaks" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch streaks", details: String(error) }, { status: 500 });
   }
 }
 
@@ -27,6 +32,7 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const { category, current_streak, last_completed_date, enabled } = await req.json();
+    console.log("PATCH /api/v2/streaks - Request:", { category, current_streak, last_completed_date, enabled });
 
     if (!category) {
       return NextResponse.json({ error: "Category is required" }, { status: 400 });
@@ -44,14 +50,18 @@ export async function PATCH(req: NextRequest) {
       .eq("category", category)
       .select("id, category, current_streak, last_completed_date, enabled, created_at, updated_at");
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error in PATCH /api/v2/streaks:", error);
+      throw error;
+    }
     if (!data || data.length === 0) {
       return NextResponse.json({ error: "Streak not found" }, { status: 404 });
     }
 
+    console.log("PATCH /api/v2/streaks - Success");
     return NextResponse.json(data[0] as StreakV2);
   } catch (error) {
     console.error("Error updating streak:", error);
-    return NextResponse.json({ error: "Failed to update streak" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update streak", details: String(error) }, { status: 500 });
   }
 }

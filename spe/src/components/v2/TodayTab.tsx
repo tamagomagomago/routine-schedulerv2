@@ -180,43 +180,63 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   });
 
   const fetchData = useCallback(async () => {
-    const [allRes, todayRes, goalsRes, streaksRes] = await Promise.all([
-      fetch("/api/v2/todos?includeGoalTodos=true"),
-      fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`),
-      fetch("/api/v2/goals"),
-      fetch("/api/v2/streaks"),
-    ]);
+    try {
+      const [allRes, todayRes, goalsRes, streaksRes] = await Promise.all([
+        fetch("/api/v2/todos?includeGoalTodos=true").catch(e => { console.error("Fetch error for allTodos:", e); return { ok: false }; }),
+        fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`).catch(e => { console.error("Fetch error for todayTodos:", e); return { ok: false }; }),
+        fetch("/api/v2/goals").catch(e => { console.error("Fetch error for goals:", e); return { ok: false }; }),
+        fetch("/api/v2/streaks").catch(e => { console.error("Fetch error for streaks:", e); return { ok: false }; }),
+      ]);
 
-    if (allRes.ok) {
-      const data = await allRes.json();
-      // TODOリストは「今日の日付が設定されていない」もものみ（goal_idは関係なく表示）
-      setAllTodos(Array.isArray(data) ? data.filter((t: TodoV2) => !t.scheduled_date || t.scheduled_date !== TODAY) : []);
-    }
-
-    if (todayRes.ok) {
-      const data = await todayRes.json();
-      setTodayTodos(Array.isArray(data) ? data : []);
-    }
-
-    if (goalsRes.ok) {
-      const data = await goalsRes.json();
-      if (Array.isArray(data)) {
-        const currentWeekNumber = getCurrentWeekNumberInMonth();
-        setWeeklyGoals(
-          data.filter((g: GoalV2) => {
-            if (g.period_type !== "weekly") return false;
-            const goalTitle = g.title || "";
-            const match = goalTitle.match(/第(\d+)週/);
-            const goalWeekNumber = match ? parseInt(match[1]) : null;
-            return goalWeekNumber === currentWeekNumber;
-          })
-        );
+      if (allRes.ok) {
+        const data = await allRes.json();
+        // TODOリストは「今日の日付が設定されていない」もものみ（goal_idは関係なく表示）
+        setAllTodos(Array.isArray(data) ? data.filter((t: TodoV2) => !t.scheduled_date || t.scheduled_date !== TODAY) : []);
+      } else {
+        console.error("allRes not ok:", allRes.status, allRes.statusText);
+        setAllTodos([]);
       }
-    }
 
-    if (streaksRes.ok) {
-      const data = await streaksRes.json();
-      setStreaks(Array.isArray(data) ? data : []);
+      if (todayRes.ok) {
+        const data = await todayRes.json();
+        setTodayTodos(Array.isArray(data) ? data : []);
+      } else {
+        console.error("todayRes not ok:", todayRes.status, todayRes.statusText);
+        const errorData = await todayRes.json().catch(() => ({}));
+        console.error("todayRes error details:", errorData);
+        setTodayTodos([]);
+      }
+
+      if (goalsRes.ok) {
+        const data = await goalsRes.json();
+        if (Array.isArray(data)) {
+          const currentWeekNumber = getCurrentWeekNumberInMonth();
+          setWeeklyGoals(
+            data.filter((g: GoalV2) => {
+              if (g.period_type !== "weekly") return false;
+              const goalTitle = g.title || "";
+              const match = goalTitle.match(/第(\d+)週/);
+              const goalWeekNumber = match ? parseInt(match[1]) : null;
+              return goalWeekNumber === currentWeekNumber;
+            })
+          );
+        }
+      } else {
+        console.error("goalsRes not ok:", goalsRes.status, goalsRes.statusText);
+        setWeeklyGoals([]);
+      }
+
+      if (streaksRes.ok) {
+        const data = await streaksRes.json();
+        setStreaks(Array.isArray(data) ? data : []);
+      } else {
+        console.error("streaksRes not ok:", streaksRes.status, streaksRes.statusText);
+        const errorData = await streaksRes.json().catch(() => ({}));
+        console.error("streaksRes error details:", errorData);
+        setStreaks([]);
+      }
+    } catch (error) {
+      console.error("Error in fetchData:", error);
     }
   }, []);
 

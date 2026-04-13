@@ -35,13 +35,23 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { data, error } = await supabase
-    .from("todos_v2")
-    .insert({ ...body, user_id: "default_user" })
-    .select()
-    .single();
+  try {
+    const body = await req.json();
+    console.log("POST /api/v2/todos - Request body:", body);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+    const { data, error } = await supabase
+      .from("todos_v2")
+      .insert({ ...body, user_id: "default_user" })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+    }
+    return NextResponse.json(data);
+  } catch (e) {
+    console.error("POST /api/v2/todos error:", e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
