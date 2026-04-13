@@ -1749,132 +1749,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 );
               })}
 
-              {/* 完了したタスク一覧 */}
-              {todayCompleted.length > 0 && (
-                <div className="border border-gray-700 rounded-xl overflow-hidden bg-gray-900/40">
-                  <button
-                    onClick={() => toggleCompletedSection(!showCompletedSection)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-400 text-xs font-semibold">✅ 完了したタスク</span>
-                      <span className="text-xs text-gray-600">{todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length}件</span>
-                      {!showCompletedSection && (
-                        <span className="text-xs text-gray-600 border border-gray-700 px-1.5 py-0.5 rounded">非表示中</span>
-                      )}
-                    </div>
-                    <div className={`w-8 h-4 rounded-full transition-colors relative ${showCompletedSection ? "bg-green-600" : "bg-gray-700"}`}>
-                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showCompletedSection ? "translate-x-4" : "translate-x-0.5"}`} />
-                    </div>
-                  </button>
-                  {showCompletedSection && (
-                    <>
-                      {/* 統計情報 */}
-                      {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length > 0 && (() => {
-                        const completedTodayTasks = todayCompleted.filter(t => t.completed_at?.startsWith(TODAY));
-                        const totalMinutes = completedTodayTasks.reduce((sum, t) => sum + (t.actual_minutes ?? t.estimated_minutes ?? 0), 0);
-                        const categoryBreakdown: Record<string, number> = {};
-                        completedTodayTasks.forEach(t => {
-                          const minutes = t.actual_minutes ?? t.estimated_minutes ?? 0;
-                          categoryBreakdown[t.category] = (categoryBreakdown[t.category] || 0) + minutes;
-                        });
-                        const sortedCategories = Object.entries(categoryBreakdown).sort((a, b) => b[1] - a[1]);
-                        const maxMinutes = Math.max(...sortedCategories.map(([_, min]) => min));
-
-                        return (
-                          <div className="px-3 pb-3 border-t border-gray-800 pt-3 space-y-3">
-                            {/* 総計 */}
-                            <div className="bg-gray-800/30 rounded-lg p-2.5 border border-green-700/40">
-                              <div className="text-xs text-gray-400 mb-1">⏱ 本日の投下時間</div>
-                              <div className="text-2xl font-bold text-green-400">{Math.floor(totalMinutes / 60)}h {totalMinutes % 60}m</div>
-                              <div className="text-xs text-gray-600 mt-1">{totalMinutes}分</div>
-                            </div>
-
-                            {/* カテゴリ別集計 */}
-                            <div className="space-y-2">
-                              <div className="text-xs text-gray-400 font-semibold">カテゴリ別</div>
-                              {sortedCategories.map(([category, minutes]) => {
-                                const percentage = (minutes / maxMinutes) * 100;
-                                return (
-                                  <div key={category} className="space-y-1">
-                                    <div className="flex items-center justify-between text-xs">
-                                      <div className="flex items-center gap-1.5">
-                                        <span>{CATEGORY_EMOJI[category as keyof typeof CATEGORY_EMOJI] ?? "📌"}</span>
-                                        <span className="text-gray-400">{CATEGORY_LABEL[category as keyof typeof CATEGORY_LABEL] || category}</span>
-                                      </div>
-                                      <span className="text-gray-600">{minutes}分</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all duration-300 ${
-                                          category === "personal" ? "bg-blue-500" :
-                                          category === "video" ? "bg-red-500" :
-                                          category === "english" ? "bg-yellow-500" :
-                                          category === "investment" ? "bg-green-500" :
-                                          category === "ai" ? "bg-purple-500" :
-                                          category === "fitness" ? "bg-orange-500" :
-                                          category === "engineer" ? "bg-cyan-500" :
-                                          category === "life_design" ? "bg-indigo-500" :
-                                          "bg-gray-600"
-                                        }`}
-                                        style={{ width: `${percentage}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* タスク一覧 */}
-                      <div className="px-3 pb-3 space-y-2 border-t border-gray-800 pt-3">
-                        {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).map((todo) => {
-                    const endTime = todo.scheduled_start
-                      ? addMinutesToTime(todo.scheduled_start, todo.estimated_minutes)
-                      : null;
-                    return (
-                      <div key={todo.id} className="bg-gray-900/60 border border-gray-700 rounded-lg p-2.5 opacity-70">
-                        <div className="flex items-start gap-2">
-                          {/* チェックマーク */}
-                          <span className="text-green-500 text-lg mt-0.5">✓</span>
-                          {/* コンテンツ */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <p className="text-white font-medium text-sm truncate line-through text-gray-400 flex-1">
-                                {todo.title}
-                              </p>
-                              {todo.completed_at && (
-                                <span className="text-green-400 text-xs font-semibold whitespace-nowrap ml-2">
-                                  {formatCompletionTime(todo.completed_at)} に完了
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap text-xs">
-                              <span className={`px-1.5 py-0.5 rounded border ${CATEGORY_COLOR[todo.category] ?? CATEGORY_COLOR.personal}`}>
-                                {CATEGORY_EMOJI[todo.category] ?? "📌"} {CATEGORY_LABEL[todo.category]}
-                              </span>
-                              {todo.scheduled_start && (
-                                <span className="text-gray-500">
-                                  ⏱ {todo.scheduled_start}～{endTime}
-                                </span>
-                              )}
-                              <span className="text-gray-600">
-                                {todo.estimated_minutes}分
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
               {/* 追加ボタン */}
               <button
                 onClick={() => setShowForm((v) => !v)}
@@ -2014,6 +1888,132 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   >
                     {loading ? "追加中..." : "追加"}
                   </button>
+                </div>
+              )}
+
+              {/* 完了したタスク一覧 */}
+              {todayCompleted.length > 0 && (
+                <div className="border border-gray-700 rounded-xl overflow-hidden bg-gray-900/40">
+                  <button
+                    onClick={() => toggleCompletedSection(!showCompletedSection)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-400 text-xs font-semibold">✅ 完了したタスク</span>
+                      <span className="text-xs text-gray-600">{todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length}件</span>
+                      {!showCompletedSection && (
+                        <span className="text-xs text-gray-600 border border-gray-700 px-1.5 py-0.5 rounded">非表示中</span>
+                      )}
+                    </div>
+                    <div className={`w-8 h-4 rounded-full transition-colors relative ${showCompletedSection ? "bg-green-600" : "bg-gray-700"}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showCompletedSection ? "translate-x-4" : "translate-x-0.5"}`} />
+                    </div>
+                  </button>
+                  {showCompletedSection && (
+                    <>
+                      {/* 統計情報 */}
+                      {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length > 0 && (() => {
+                        const completedTodayTasks = todayCompleted.filter(t => t.completed_at?.startsWith(TODAY));
+                        const totalMinutes = completedTodayTasks.reduce((sum, t) => sum + (t.actual_minutes ?? t.estimated_minutes ?? 0), 0);
+                        const categoryBreakdown: Record<string, number> = {};
+                        completedTodayTasks.forEach(t => {
+                          const minutes = t.actual_minutes ?? t.estimated_minutes ?? 0;
+                          categoryBreakdown[t.category] = (categoryBreakdown[t.category] || 0) + minutes;
+                        });
+                        const sortedCategories = Object.entries(categoryBreakdown).sort((a, b) => b[1] - a[1]);
+                        const maxMinutes = Math.max(...sortedCategories.map(([_, min]) => min));
+
+                        return (
+                          <div className="px-3 pb-3 border-t border-gray-800 pt-3 space-y-3">
+                            {/* 総計 */}
+                            <div className="bg-gray-800/30 rounded-lg p-2.5 border border-green-700/40">
+                              <div className="text-xs text-gray-400 mb-1">⏱ 本日の投下時間</div>
+                              <div className="text-2xl font-bold text-green-400">{Math.floor(totalMinutes / 60)}h {totalMinutes % 60}m</div>
+                              <div className="text-xs text-gray-600 mt-1">{totalMinutes}分</div>
+                            </div>
+
+                            {/* カテゴリ別集計 */}
+                            <div className="space-y-2">
+                              <div className="text-xs text-gray-400 font-semibold">カテゴリ別</div>
+                              {sortedCategories.map(([category, minutes]) => {
+                                const percentage = (minutes / maxMinutes) * 100;
+                                return (
+                                  <div key={category} className="space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <div className="flex items-center gap-1.5">
+                                        <span>{CATEGORY_EMOJI[category as keyof typeof CATEGORY_EMOJI] ?? "📌"}</span>
+                                        <span className="text-gray-400">{CATEGORY_LABEL[category as keyof typeof CATEGORY_LABEL] || category}</span>
+                                      </div>
+                                      <span className="text-gray-600">{minutes}分</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                          category === "personal" ? "bg-blue-500" :
+                                          category === "video" ? "bg-red-500" :
+                                          category === "english" ? "bg-yellow-500" :
+                                          category === "investment" ? "bg-green-500" :
+                                          category === "ai" ? "bg-purple-500" :
+                                          category === "fitness" ? "bg-orange-500" :
+                                          category === "engineer" ? "bg-cyan-500" :
+                                          category === "life_design" ? "bg-indigo-500" :
+                                          "bg-gray-600"
+                                        }`}
+                                        style={{ width: `${percentage}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* タスク一覧 */}
+                      <div className="px-3 pb-3 space-y-2 border-t border-gray-800 pt-3">
+                        {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).map((todo) => {
+                    const endTime = todo.scheduled_start
+                      ? addMinutesToTime(todo.scheduled_start, todo.estimated_minutes)
+                      : null;
+                    return (
+                      <div key={todo.id} className="bg-gray-900/60 border border-gray-700 rounded-lg p-2.5 opacity-70">
+                        <div className="flex items-start gap-2">
+                          {/* チェックマーク */}
+                          <span className="text-green-500 text-lg mt-0.5">✓</span>
+                          {/* コンテンツ */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <p className="text-white font-medium text-sm truncate line-through text-gray-400 flex-1">
+                                {todo.title}
+                              </p>
+                              {todo.completed_at && (
+                                <span className="text-green-400 text-xs font-semibold whitespace-nowrap ml-2">
+                                  {formatCompletionTime(todo.completed_at)} に完了
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap text-xs">
+                              <span className={`px-1.5 py-0.5 rounded border ${CATEGORY_COLOR[todo.category] ?? CATEGORY_COLOR.personal}`}>
+                                {CATEGORY_EMOJI[todo.category] ?? "📌"} {CATEGORY_LABEL[todo.category]}
+                              </span>
+                              {todo.scheduled_start && (
+                                <span className="text-gray-500">
+                                  ⏱ {todo.scheduled_start}～{endTime}
+                                </span>
+                              )}
+                              <span className="text-gray-600">
+                                {todo.estimated_minutes}分
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
