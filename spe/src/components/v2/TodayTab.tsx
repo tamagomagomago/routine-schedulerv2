@@ -105,6 +105,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     estimated_minutes: 30,
     scheduled_date: TODAY,
     scheduled_start: "",
+    description: "",
     goal_id: undefined,
   });
   const [loading, setLoading] = useState(false);
@@ -113,6 +114,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const [editingField, setEditingField] = useState<"title" | "time" | "todayTitle" | "todayTime" | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [editingPriorityId, setEditingPriorityId] = useState<number | null>(null);
+  const [showDescriptionInput, setShowDescriptionInput] = useState(false);
 
   const fetchData = useCallback(async () => {
     const [allRes, todayRes, goalsRes] = await Promise.all([
@@ -367,6 +369,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         priority: editForm.priority,
         estimated_minutes: editForm.estimated_minutes,
         scheduled_start: editForm.scheduled_start || null,
+        description: editForm.description || null,
         goal_id: editForm.goal_id || null,
       }),
     });
@@ -405,7 +408,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
       });
       if (res.ok) {
         setShowForm(false);
-        setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", goal_id: undefined });
+        setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", description: "", goal_id: undefined });
         fetchData();
       }
     } finally {
@@ -871,6 +874,24 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   </div>
 
                   <button
+                    type="button"
+                    onClick={() => setShowDescriptionInput(!showDescriptionInput)}
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    {showDescriptionInput ? "▼ 補足を閉じる" : "▶ 補足を追加"}
+                  </button>
+
+                  {showDescriptionInput && (
+                    <textarea
+                      placeholder="補足（オプション）"
+                      value={form.description || ""}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                    />
+                  )}
+
+                  <button
                     onClick={() => {
                       if (!form.title.trim()) return;
                       setLoading(true);
@@ -890,7 +911,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       }).then((res) => {
                         if (res.ok) {
                           setShowForm(false);
-                          setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", goal_id: undefined });
+                          setForm({ title: "", category: "personal", priority: 3, estimated_minutes: 30, scheduled_date: TODAY, scheduled_start: "", description: "", goal_id: undefined });
                           fetchData();
                         }
                         setLoading(false);
@@ -1025,6 +1046,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
                           />
                         </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">補足（オプション）</label>
+                        <textarea
+                          placeholder="補足情報を入力..."
+                          value={editForm.description || ""}
+                          onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                          className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          rows={3}
+                        />
                       </div>
                       {weeklyGoals.length > 0 && (
                         <div>
@@ -1374,6 +1405,24 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   </div>
 
                   <button
+                    type="button"
+                    onClick={() => setShowDescriptionInput(!showDescriptionInput)}
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    {showDescriptionInput ? "▼ 補足を閉じる" : "▶ 補足を追加"}
+                  </button>
+
+                  {showDescriptionInput && (
+                    <textarea
+                      placeholder="補足（オプション）"
+                      value={form.description || ""}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                    />
+                  )}
+
+                  <button
                     onClick={handleSubmit}
                     disabled={loading || !form.title.trim()}
                     className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
@@ -1461,6 +1510,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                   className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
                                 />
                               </div>
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-500 mb-1 block">補足（オプション）</label>
+                              <textarea
+                                placeholder="補足情報を入力..."
+                                value={editForm.description || ""}
+                                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                rows={3}
+                              />
                             </div>
                             {weeklyGoals.length > 0 && (
                               <div>

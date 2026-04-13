@@ -88,6 +88,7 @@ export interface TodoV2 {
   is_mit: boolean;
   scheduled_date?: string | null;
   scheduled_start?: string | null;
+  description?: string | null;
   goal_id?: number | null;
   completed_at?: string | null;
   created_at: string;
@@ -102,6 +103,7 @@ export interface CreateTodoV2 {
   is_mit?: boolean;
   scheduled_date?: string;
   scheduled_start?: string;
+  description?: string;
   goal_id?: number;
 }
 
