@@ -590,6 +590,15 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const todayCompletionRate = todayTodos.length > 0 ? Math.round((todayCompleted.length / todayTodos.length) * 100) : 0;
   const todayTotalActual = todayCompleted.reduce((s, t) => s + (t.actual_minutes ?? t.estimated_minutes), 0);
 
+  // 完了したタスクのカテゴリ別集計
+  const todayCompletedByCategory: Record<string, number> = {};
+  todayCompleted.forEach((t) => {
+    const minutes = t.actual_minutes ?? t.estimated_minutes ?? 0;
+    todayCompletedByCategory[t.category] = (todayCompletedByCategory[t.category] ?? 0) + minutes;
+  });
+  const todayCompletedCategorySorted = Object.entries(todayCompletedByCategory)
+    .sort(([, a], [, b]) => b - a);
+
   // Sort today todos by start time
   const todayIncompleteSorted = [...todayIncomplete].sort((a, b) => {
     const aTime = a.scheduled_start || "23:59";
@@ -1763,10 +1772,11 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       {/* 統計情報 */}
                       {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length > 0 && (() => {
                         const completedTodayTasks = todayCompleted.filter(t => t.completed_at?.startsWith(TODAY));
-                        const totalMinutes = completedTodayTasks.reduce((sum, t) => sum + t.estimated_minutes, 0);
+                        const totalMinutes = completedTodayTasks.reduce((sum, t) => sum + (t.actual_minutes ?? t.estimated_minutes ?? 0), 0);
                         const categoryBreakdown: Record<string, number> = {};
                         completedTodayTasks.forEach(t => {
-                          categoryBreakdown[t.category] = (categoryBreakdown[t.category] || 0) + t.estimated_minutes;
+                          const minutes = t.actual_minutes ?? t.estimated_minutes ?? 0;
+                          categoryBreakdown[t.category] = (categoryBreakdown[t.category] || 0) + minutes;
                         });
                         const sortedCategories = Object.entries(categoryBreakdown).sort((a, b) => b[1] - a[1]);
                         const maxMinutes = Math.max(...sortedCategories.map(([_, min]) => min));
