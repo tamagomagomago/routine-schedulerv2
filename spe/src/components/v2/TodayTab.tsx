@@ -1914,9 +1914,13 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       {/* 統計情報 */}
                       {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length > 0 && (() => {
                         const completedTodayTasks = todayCompleted.filter(t => t.completed_at?.startsWith(TODAY));
-                        const totalMinutes = completedTodayTasks.reduce((sum, t) => sum + (t.actual_minutes ?? t.estimated_minutes ?? 0), 0);
+                        const totalMinutes = completedTodayTasks.reduce((sum, t) => {
+                          if (t.category === "personal") return sum;
+                          return sum + (t.actual_minutes ?? t.estimated_minutes ?? 0);
+                        }, 0);
                         const categoryBreakdown: Record<string, number> = {};
                         completedTodayTasks.forEach(t => {
+                          if (t.category === "personal") return;
                           const minutes = t.actual_minutes ?? t.estimated_minutes ?? 0;
                           categoryBreakdown[t.category] = (categoryBreakdown[t.category] || 0) + minutes;
                         });

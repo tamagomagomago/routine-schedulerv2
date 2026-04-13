@@ -170,6 +170,53 @@ export default function StatsTab() {
         </section>
       )}
 
+      {/* 今週の投下時間サマリー */}
+      {(stats?.weeklyDaily ?? []).length > 0 && (() => {
+        const dailySummary = (stats?.weeklyDaily ?? []).map((day) => {
+          const total = Object.entries(day.categories ?? {}).reduce((sum, [cat, mins]) => {
+            if (cat === "personal") return sum;
+            return sum + (mins ?? 0);
+          }, 0);
+          return { day: day.day, total };
+        });
+        const weeklyTotal = dailySummary.reduce((sum, d) => sum + d.total, 0);
+        const maxDaily = Math.max(...dailySummary.map(d => d.total));
+
+        return (
+          <section>
+            <h3 className="text-yellow-400 text-sm font-semibold mb-3">⏱️ 今週の投下時間サマリー（勉強時間）</h3>
+            <div className="space-y-3">
+              {/* 曜日ごと */}
+              <div className="space-y-2">
+                {dailySummary.map(({ day, total }) => {
+                  const pct = maxDaily > 0 ? (total / maxDaily) * 100 : 0;
+                  return (
+                    <div key={day} className="space-y-0.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-300 w-8">{day}</span>
+                        <span className="text-gray-500 flex-1 text-right">{total}分</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all bg-gradient-to-r from-blue-500 to-cyan-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* 今週の合計 */}
+              <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-700/50 rounded-lg p-3 mt-4">
+                <div className="text-xs text-gray-400 mb-1">今週の投下時間合計</div>
+                <div className="text-3xl font-bold text-cyan-400">{Math.floor(weeklyTotal / 60)}h {weeklyTotal % 60}m</div>
+                <div className="text-xs text-gray-600 mt-1">{weeklyTotal}分</div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* 目標達成率トレンド */}
       {trendData.length > 0 && (
         <section>
