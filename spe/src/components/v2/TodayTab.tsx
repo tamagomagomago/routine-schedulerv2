@@ -31,6 +31,17 @@ function getThisWeekRange() {
   };
 }
 
+function getCurrentWeekNumberInMonth() {
+  const today = new Date();
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const daysIntoMonth = today.getDate() - firstDayOfMonth.getDate();
+  const firstDayDayOfWeek = firstDayOfMonth.getDay();
+  const daysUntilFirstMonday = (firstDayDayOfWeek === 0 ? 6 : firstDayDayOfWeek - 1);
+  const daysSinceFirstMondayOfMonth = daysIntoMonth + daysUntilFirstMonday;
+  const weekNumber = Math.floor(daysSinceFirstMondayOfMonth / 7) + 1;
+  return weekNumber;
+}
+
 function addMinutesToTime(time: string, minutes: number): string {
   const [h, m] = time.split(":").map(Number);
   const total = h * 60 + m + minutes;
@@ -124,11 +135,15 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     if (goalsRes.ok) {
       const data = await goalsRes.json();
       if (Array.isArray(data)) {
-        const { start, end } = getThisWeekRange();
+        const currentWeekNumber = getCurrentWeekNumberInMonth();
         setWeeklyGoals(
-          data.filter((g: GoalV2) =>
-            g.period_type === "weekly" && g.start_date <= end && g.end_date >= start
-          )
+          data.filter((g: GoalV2) => {
+            if (g.period_type !== "weekly") return false;
+            const goalTitle = g.title || "";
+            const match = goalTitle.match(/第(\d+)週/);
+            const goalWeekNumber = match ? parseInt(match[1]) : null;
+            return goalWeekNumber === currentWeekNumber;
+          })
         );
       }
     }
@@ -201,26 +216,37 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
       )
     );
 
-    const res = await fetch(`/api/v2/todos/${todo.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_completed: newIsCompleted, completed_at }),
-    });
+    try {
+      const res = await fetch(`/api/v2/todos/${todo.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_completed: newIsCompleted, completed_at }),
+      });
 
-    // TODOが完了したら、関連する目標の進捗を更新
-    if (res.ok && newIsCompleted && todo.goal_id) {
-      const goal = weeklyGoals.find((g) => g.id === todo.goal_id);
-      if (goal) {
-        const newValue = (goal.current_value || 0) + (todo.estimated_minutes / 60);
-        await fetch(`/api/v2/goals/${todo.goal_id}/progress`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ current_value: newValue }),
-        });
+      // TODOが完了したら、関連する目標の進捗を更新
+      if (res.ok && newIsCompleted && todo.goal_id) {
+        const goal = weeklyGoals.find((g) => g.id === todo.goal_id);
+        if (goal) {
+          const newValue = (goal.current_value || 0) + (todo.estimated_minutes / 60);
+          await fetch(`/api/v2/goals/${todo.goal_id}/progress`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ current_value: newValue }),
+          });
+        }
       }
-    }
 
-    if (res.ok) fetchData();
+      if (res.ok) fetchData();
+      else {
+        console.error(`Failed to update todo: ${res.status} ${res.statusText}`);
+        // UI を元に戻す
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Error updating todo:", error);
+      // UI を元に戻す
+      fetchData();
+    }
   };
 
   const handleSetMIT = async (todo: TodoV2) => {
@@ -251,15 +277,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scheduled_date: null }),
-    });
-    if (res.ok) fetchData();
-  };
-
-  const handlePriorityChange = async (id: number, newPriority: number) => {
-    const res = await fetch(`/api/v2/todos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priority: newPriority }),
     });
     if (res.ok) fetchData();
   };
@@ -296,27 +313,45 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   };
 
   const handleCategoryChange = async (id: number, newCategory: string) => {
+    // Optimistic update
+    setTodayTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, category: newCategory } : t))
+    );
+    setAllTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, category: newCategory } : t))
+    );
+    setEditingCategoryId(null);
+
     const res = await fetch(`/api/v2/todos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ category: newCategory }),
     });
 
-    if (res.ok) {
-      setEditingCategoryId(null);
+    if (!res.ok) {
+      // If failed, refresh data to revert the optimistic update
       fetchData();
     }
   };
 
   const handlePriorityChange = async (id: number, newPriority: number) => {
+    // Optimistic update
+    setTodayTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, priority: newPriority } : t))
+    );
+    setAllTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, priority: newPriority } : t))
+    );
+    setEditingPriorityId(null);
+
     const res = await fetch(`/api/v2/todos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ priority: newPriority }),
     });
 
-    if (res.ok) {
-      setEditingPriorityId(null);
+    if (!res.ok) {
+      // If failed, refresh data to revert the optimistic update
       fetchData();
     }
   };
@@ -543,15 +578,22 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                           <input
                             autoFocus
                             defaultValue={todo.title}
-                            onBlur={(e) => handleInlineEditSave(todo.id, "title", e.currentTarget.value)}
+                            onBlur={(e) => {
+                              if (editingField === "title" && editingTodoId === todo.id) {
+                                handleInlineEditSave(todo.id, "title", e.currentTarget.value);
+                              }
+                            }}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+                              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                                 e.preventDefault();
                                 handleInlineEditSave(todo.id, "title", e.currentTarget.value);
+                                setEditingField(null);
+                                setEditingTodoId(null);
                               }
                               if (e.key === "Escape") {
                                 e.preventDefault();
                                 setEditingField(null);
+                                setEditingTodoId(null);
                               }
                             }}
                             className="flex-1 bg-gray-700 text-white rounded-lg px-2 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -575,15 +617,22 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             type="text"
                             placeholder="0900"
                             defaultValue={(todo.scheduled_start || "").replace(":", "")}
-                            onBlur={(e) => handleInlineEditSave(todo.id, "time", formatTimeInput(e.currentTarget.value))}
+                            onBlur={(e) => {
+                              if (editingField === "time" && editingTodoId === todo.id) {
+                                handleInlineEditSave(todo.id, "time", formatTimeInput(e.currentTarget.value));
+                              }
+                            }}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+                              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                                 e.preventDefault();
                                 handleInlineEditSave(todo.id, "time", formatTimeInput(e.currentTarget.value));
+                                setEditingField(null);
+                                setEditingTodoId(null);
                               }
                               if (e.key === "Escape") {
                                 e.preventDefault();
                                 setEditingField(null);
+                                setEditingTodoId(null);
                               }
                             }}
                             maxLength={5}
@@ -608,6 +657,13 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                     {/* アクション */}
                     <div className="flex items-center gap-2 shrink-0">
                       <button
+                        onClick={() => handleEdit(todo)}
+                        className="text-gray-700 hover:text-blue-400 text-sm transition-colors"
+                        title="編集"
+                      >
+                        📝
+                      </button>
+                      <button
                         onClick={() => handleAddToToday(todo.id)}
                         className="text-xs px-2 py-1 rounded border border-blue-700 text-blue-400 hover:bg-blue-900/40 transition-colors"
                         title="今日に追加"
@@ -623,6 +679,88 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       </button>
                     </div>
                   </div>
+                  {/* TODOリスト画面での編集フォーム */}
+                  {activeTab === "list" && editingTodoId === todo.id && editForm && (
+                    <div className="mt-3 pt-3 border-t border-gray-700 space-y-3">
+                      <input
+                        placeholder="タスク名"
+                        value={editForm.title || ""}
+                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault();
+                            handleSaveEdit();
+                          }
+                        }}
+                        className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">カテゴリ</label>
+                          <select
+                            value={editForm.category || "personal"}
+                            onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                            className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                          >
+                            {CATEGORIES.map((c) => (
+                              <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">優先度</label>
+                          <div className="flex gap-1">
+                            {([1, 3, 5] as const).map((p) => (
+                              <button
+                                key={p}
+                                onClick={() => setEditForm({ ...editForm, priority: p })}
+                                className={`flex-1 py-1.5 rounded text-xs border transition-colors ${
+                                  editForm.priority === p ? PRIORITY_COLOR[p] : "border-gray-600 text-gray-500"
+                                }`}
+                              >
+                                {PRIORITY_LABEL[p]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
+                        <input
+                          type="number"
+                          value={editForm.estimated_minutes || 30}
+                          onChange={(e) => setEditForm({ ...editForm, estimated_minutes: Number(e.target.value) })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleSaveEdit();
+                            }
+                          }}
+                          min={5}
+                          step={5}
+                          className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={loading}
+                          className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          💾 保存
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingTodoId(null);
+                            setEditForm(null);
+                          }}
+                          className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          ✕ キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {/* TODOリストへの追加ボタン */}
@@ -641,7 +779,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                         e.preventDefault();
                         if (form.title.trim()) handleSubmit();
                       }
@@ -687,6 +825,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       type="number"
                       value={form.estimated_minutes}
                       onChange={(e) => setForm({ ...form, estimated_minutes: Number(e.target.value) })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (form.title.trim()) handleSubmit();
+                        }
+                      }}
                       min={5}
                       step={5}
                       className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
@@ -772,6 +916,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                         placeholder="タスク名"
                         value={editForm.title || ""}
                         onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault();
+                            handleSaveEdit();
+                          }
+                        }}
                         className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       <div className="grid grid-cols-2 gap-2">
@@ -811,6 +961,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             type="number"
                             value={editForm.estimated_minutes || 30}
                             onChange={(e) => setEditForm({ ...editForm, estimated_minutes: Number(e.target.value) })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSaveEdit();
+                              }
+                            }}
                             min={5}
                             step={5}
                             className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
@@ -825,6 +981,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             onChange={(e) => {
                               const formatted = formatTimeInput(e.target.value);
                               setEditForm({ ...editForm, scheduled_start: formatted });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSaveEdit();
+                              }
                             }}
                             maxLength={5}
                             className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
@@ -894,11 +1056,17 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                 autoFocus
                                 type="text"
                                 defaultValue={todo.title}
-                                onBlur={(e) => handleInlineEditSave(todo.id, "title", e.currentTarget.value)}
+                                onBlur={(e) => {
+                                  if (editingField === "todayTitle" && editingTodoId === todo.id) {
+                                    handleInlineEditSave(todo.id, "title", e.currentTarget.value);
+                                  }
+                                }}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
+                                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                                     e.preventDefault();
                                     handleInlineEditSave(todo.id, "title", e.currentTarget.value);
+                                    setEditingField(null);
+                                    setEditingTodoId(null);
                                   }
                                   if (e.key === "Escape") {
                                     e.preventDefault();
@@ -926,7 +1094,10 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                 <select
                                   autoFocus
                                   value={todo.category}
-                                  onChange={(e) => handleCategoryChange(todo.id, e.target.value)}
+                                  onChange={(e) => {
+                                    handleCategoryChange(todo.id, e.target.value);
+                                    setEditingCategoryId(null);
+                                  }}
                                   onBlur={() => setEditingCategoryId(null)}
                                   className="bg-gray-700 text-white rounded px-2 py-0.5 text-xs"
                                 >
@@ -950,7 +1121,10 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                   {([1, 3, 5] as const).map((p) => (
                                     <button
                                       key={p}
-                                      onClick={() => handlePriorityChange(todo.id, p)}
+                                      onClick={() => {
+                                        handlePriorityChange(todo.id, p);
+                                        setEditingPriorityId(null);
+                                      }}
                                       className={`px-2 py-0.5 rounded text-xs border transition-colors ${
                                         todo.priority === p ? PRIORITY_COLOR[p] : "border-gray-600 text-gray-500"
                                       }`}
@@ -980,11 +1154,17 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                     type="text"
                                     placeholder="0900"
                                     defaultValue={formatDisplayTime(todo.scheduled_start).replace(":", "")}
-                                    onBlur={(e) => handleInlineEditSave(todo.id, "time", formatTimeInput(e.currentTarget.value, true))}
+                                    onBlur={(e) => {
+                                      if (editingField === "todayTime" && editingTodoId === todo.id) {
+                                        handleInlineEditSave(todo.id, "time", formatTimeInput(e.currentTarget.value, true));
+                                      }
+                                    }}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                                         e.preventDefault();
                                         handleInlineEditSave(todo.id, "time", formatTimeInput(e.currentTarget.value, true));
+                                        setEditingField(null);
+                                        setEditingTodoId(null);
                                       }
                                       if (e.key === "Escape") {
                                         e.preventDefault();
@@ -1032,7 +1212,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             className="text-sm px-1.5 py-1 rounded text-gray-600 hover:text-blue-400 transition-colors"
                             title="編集"
                           >
-                            ✎
+                            📝
                           </button>
                           <button
                             onClick={() => onStartFocus(todo)}
@@ -1081,7 +1261,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       value={form.title}
                       onChange={(e) => setForm({ ...form, title: e.target.value })}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                           e.preventDefault();
                           if (form.title.trim()) handleSubmit();
                         }

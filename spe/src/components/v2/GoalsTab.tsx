@@ -25,23 +25,21 @@ function getThisWeekRange() {
 
 function getCurrentWeekNumberInMonth() {
   const today = new Date();
-  // 当月の1日が何曜日か（0=日，1=月...）
+  // 当月の1日を取得
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  // 当月1日から今日までの日数差分
+  const daysIntoMonth = today.getDate() - firstDayOfMonth.getDate();
+  // 当月1日が何曜日か（0=日，1=月... 6=土）
   const firstDayDayOfWeek = firstDayOfMonth.getDay();
+  // 月曜スタートで計算：月曜の日付 = 1日 - (1日の曜日 - 1) + (0,6,5,4,3,2,1)
+  // つまり、月曜スタートの第1週に1日が含まれる最初の月曜日を求める
+  const daysUntilFirstMonday = (firstDayDayOfWeek === 0 ? 6 : firstDayDayOfWeek - 1);
+  // 当月1日から遡ってその月の第1週の月曜日までの日数
+  const daysSinceFirstMondayOfMonth = daysIntoMonth + daysUntilFirstMonday;
+  // 第何週か（0-indexed）
+  const weekNumber = Math.floor(daysSinceFirstMondayOfMonth / 7) + 1;
 
-  // 月の初日からの日数
-  const dayOfMonth = today.getDate();
-
-  // 第何週かを計算（月曜スタート）
-  // 月曜=1，日曜=0 になるように調整
-  const adjustedFirstDay = (firstDayDayOfWeek + 6) % 7; // 月曜=0, 日曜=6
-  const adjustedToday = (today.getDay() + 6) % 7; // 月曜=0, 日曜=6
-
-  // 月の1日から今日までのオフセット
-  const daysFromFirstMonday = dayOfMonth - 1 - adjustedFirstDay;
-  const weekNumber = Math.floor(daysFromFirstMonday / 7) + 1;
-
-  return Math.max(1, weekNumber);
+  return weekNumber;
 }
 
 export default function GoalsTab() {
@@ -745,6 +743,31 @@ function GoalCard({ goal, parentLabel, onEdit, onDelete, onProgress }: {
   onDelete: () => void;
   onProgress: (delta: number) => void;
 }) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(goal.title);
+
+  const handleSaveTitle = async () => {
+    if (editedTitle.trim() && editedTitle !== goal.title) {
+      const res = await fetch(`/api/v2/goals/${goal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: editedTitle }),
+      });
+      if (res.ok) {
+        setIsEditingTitle(false);
+        // Note: Parent component should refetch goals to reflect the change
+        // For now, we just close the edit mode
+      } else {
+        // Revert on failure
+        setEditedTitle(goal.title);
+        setIsEditingTitle(false);
+      }
+    } else {
+      setIsEditingTitle(false);
+      setEditedTitle(goal.title);
+    }
+  };
+
   const progress = goal.target_value ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100)) : 0;
   const barColor = goal.is_achieved ? "bg-green-500" : progress >= 60 ? "bg-blue-500" : progress >= 30 ? "bg-yellow-500" : "bg-red-500";
   const catColor = CATEGORY_COLOR[goal.category] ?? CATEGORY_COLOR.personal;
@@ -756,7 +779,32 @@ function GoalCard({ goal, parentLabel, onEdit, onDelete, onProgress }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             <span>{CATEGORY_EMOJI[goal.category] ?? "📌"}</span>
-            <p className="text-sm font-medium text-gray-100 truncate">{goal.title}</p>
+            {isEditingTitle ? (
+              <input
+                autoFocus
+                type="text"
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={handleSaveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                    handleSaveTitle();
+                  }
+                  if (e.key === "Escape") {
+                    setIsEditingTitle(false);
+                    setEditedTitle(goal.title);
+                  }
+                }}
+                className="flex-1 bg-gray-700 text-white rounded px-2 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            ) : (
+              <p
+                onClick={() => setIsEditingTitle(true)}
+                className="text-sm font-medium text-gray-100 truncate cursor-pointer hover:text-blue-300 transition-colors"
+              >
+                {goal.title}
+              </p>
+            )}
             {goal.is_achieved && <span className="text-green-400 text-xs shrink-0">✓達成</span>}
           </div>
           {parentLabel && <p className="text-xs text-gray-600 truncate ml-5">↑ {parentLabel}</p>}
