@@ -637,7 +637,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                   <label className="text-xs text-amber-300 font-semibold block mb-1">📍 月曜日時点の自分（現在地）</label>
                   <textarea
                     autoFocus
-                    placeholder="例：疲れている、やることが多い感覚を持っている"
+                    placeholder="例：動画編集の概要を知らない、動画生成からインスタ投稿までに何をしたらいいかわからない"
                     value={visionModalText.split("---")[0] || ""}
                     onChange={(e) => {
                       const sunday = visionModalText.split("---")[1] || "";
@@ -650,7 +650,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 <div>
                   <label className="text-xs text-amber-300 font-semibold block mb-1">🎯 日曜日になりたい自分（目標）</label>
                   <textarea
-                    placeholder="例：やることをやり切った充実感、成長を実感している"
+                    placeholder="例：動画編集の大枠を理解、Nano BananaやVeo3で動画生成しDaVinci Resolveで編集してインスタ投稿"
                     value={visionModalText.split("---")[1] || ""}
                     onChange={(e) => {
                       const monday = visionModalText.split("---")[0] || "";
@@ -917,7 +917,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
           <div>
             <label className="text-xs text-amber-300 font-semibold block mb-2">📍 月曜日時点の自分（現在地）</label>
             <textarea
-              placeholder="例：疲れている、やることが多い感覚を持っている"
+              placeholder="例：動画編集の概要を知らない、動画生成からインスタ投稿までに何をしたらいいかわからない"
               value={weeklyVisionMonday}
               onChange={(e) => {
                 setWeeklyVisionMonday(e.target.value);
@@ -934,7 +934,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
           <div>
             <label className="text-xs text-amber-300 font-semibold block mb-2">🎯 日曜日になりたい自分（目標）</label>
             <textarea
-              placeholder="例：やることをやり切った充実感、成長を実感している"
+              placeholder="例：動画編集の大枠を理解、Nano BananaやVeo3で動画生成しDaVinci Resolveで編集してインスタ投稿"
               value={weeklyVisionSunday}
               onChange={(e) => {
                 setWeeklyVisionSunday(e.target.value);
@@ -2074,13 +2074,13 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
               )}
 
               {/* 完了済み */}
-              {todayCompleted.length > 0 && (
+              {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length > 0 && (
                 <details className="mt-3">
                   <summary className="text-gray-600 text-xs cursor-pointer hover:text-gray-400 select-none py-1">
-                    ✅ 完了済み ({todayCompleted.length}件)
+                    ✅ 完了済み ({todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).length}件)
                   </summary>
                   <div className="mt-2 space-y-2">
-                    {todayCompleted.map((todo) => {
+                    {todayCompleted.filter(t => t.completed_at?.startsWith(TODAY)).map((todo) => {
                       const endTime = todo.scheduled_start
                         ? addMinutesToTime(todo.scheduled_start, todo.estimated_minutes)
                         : null;
