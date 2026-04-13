@@ -687,6 +687,11 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                             🎯 {weeklyGoals.find(g => g.id === todo.goal_id)?.title.slice(0, 10)}
                           </span>
                         )}
+                        {todo.description && (
+                          <span className="px-1.5 py-0.5 rounded border border-gray-700 text-gray-400">
+                            📝 補足あり
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1265,7 +1270,20 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                               🎯 {weeklyGoals.find(g => g.id === todo.goal_id)?.title.slice(0, 12)}
                             </span>
                           )}
+                          {todo.description && (
+                            <span className="px-1.5 py-0.5 rounded border border-gray-700 text-gray-400">
+                              📝 補足あり
+                            </span>
+                          )}
                         </div>
+                        {todo.description && (
+                          <details className="mt-2 text-xs">
+                            <summary className="text-gray-500 cursor-pointer hover:text-gray-300 py-1">補足を表示</summary>
+                            <div className="mt-1 p-2 bg-gray-800/50 rounded border border-gray-700 text-gray-300 whitespace-pre-wrap break-words">
+                              {todo.description}
+                            </div>
+                          </details>
+                        )}
                       </div>
 
                       {/* アクション - 3行配置 */}
@@ -1590,7 +1608,20 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                                     🎯 {weeklyGoals.find(g => g.id === todo.goal_id)?.title.slice(0, 12)}
                                   </span>
                                 )}
+                                {todo.description && (
+                                  <span className="px-1.5 py-0.5 rounded border border-gray-700 text-gray-400">
+                                    📝 補足あり
+                                  </span>
+                                )}
                               </div>
+                              {todo.description && (
+                                <details className="mt-2 text-xs">
+                                  <summary className="text-gray-500 cursor-pointer hover:text-gray-300 py-1">補足を表示</summary>
+                                  <div className="mt-1 p-2 bg-gray-800/50 rounded border border-gray-700 text-gray-300 whitespace-pre-wrap break-words">
+                                    {todo.description}
+                                  </div>
+                                </details>
+                              )}
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <button
