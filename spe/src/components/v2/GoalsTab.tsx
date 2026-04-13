@@ -6,7 +6,7 @@ import {
   CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_LABEL, PRIORITY_COLOR,
 } from "@/types/v2";
 
-const CATEGORIES = ["video", "english", "investment", "ai", "personal"];
+const CATEGORIES = ["video", "english", "investment", "ai", "personal", "fitness", "engineer", "life_design"];
 const TODAY = new Date().toISOString().split("T")[0];
 const THIS_YEAR = new Date().getFullYear();
 

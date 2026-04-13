@@ -342,6 +342,7 @@ function TodayTodoCard({
 }) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(todo.title);
+  const [showDesc, setShowDesc] = useState(false);
   const priorityLabel = numToLabel(todo.priority);
 
   const saveTitle = () => {
@@ -459,6 +460,23 @@ function TodayTodoCard({
                 ))}
               </div>
             </>
+          )}
+
+          {/* 補足（Description） */}
+          {todo.description && (
+            <div className="mt-1.5">
+              <button
+                onClick={() => setShowDesc(!showDesc)}
+                className="text-xs text-gray-500 hover:text-gray-300"
+              >
+                {showDesc ? "▲" : "▼"} 補足
+              </button>
+              {showDesc && (
+                <p className="text-xs text-gray-400 mt-1 p-1.5 bg-gray-900/40 rounded border border-gray-700">
+                  {todo.description}
+                </p>
+              )}
+            </div>
           )}
         </div>
         <div className="flex flex-col gap-1 shrink-0 items-end">

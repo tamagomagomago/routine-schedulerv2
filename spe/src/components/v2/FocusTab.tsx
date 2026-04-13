@@ -96,10 +96,18 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
 
   const fetchData = useCallback(async () => {
     const [todosRes, sessionsRes] = await Promise.all([
-      fetch(`/api/v2/todos?date=${TODAY}&include_unscheduled=true`),
+      // 集中タブは「今日のTODO」のみを表示する
+      fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`),
       fetch(`/api/v2/focus?date=${TODAY}`),
     ]);
-    if (todosRes.ok) setTodos(await todosRes.json());
+    if (todosRes.ok) {
+      const allTodos = await todosRes.json();
+      // scheduled_dateが今日のものだけをフィルタリング
+      const todayTodos = Array.isArray(allTodos)
+        ? allTodos.filter((t: TodoV2) => t.scheduled_date === TODAY && !t.is_completed)
+        : [];
+      setTodos(todayTodos);
+    }
     if (sessionsRes.ok) setSessions(await sessionsRes.json());
   }, []);
 

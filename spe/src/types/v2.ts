@@ -89,6 +89,7 @@ export interface TodoV2 {
   scheduled_date?: string | null;
   scheduled_start?: string | null;
   description?: string | null;
+  vision?: string | null;
   goal_id?: number | null;
   completed_at?: string | null;
   created_at: string;
@@ -104,6 +105,7 @@ export interface CreateTodoV2 {
   scheduled_date?: string;
   scheduled_start?: string;
   description?: string;
+  vision?: string;
   goal_id?: number;
 }
 
@@ -133,4 +135,14 @@ export interface StatsV2 {
   focus_by_category: Record<string, number>; // category → total minutes
   weekly_focus: { week: string; minutes: number }[];
   goal_achievement_trend: { week: string; rate: number }[];
+}
+
+export interface StreakV2 {
+  id: number;
+  category: string;
+  current_streak: number;
+  last_completed_date?: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
 }

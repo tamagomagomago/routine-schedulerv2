@@ -8,6 +8,7 @@ interface StatsData {
   focusByCategory: Record<string, number>;
   weeklyFocus: { week: string; minutes: number }[];
   goalAchievementTrend: { week: string; rate: number }[];
+  weeklyDaily?: { day: string; minutes: number }[];
 }
 
 const BAR_COLORS: Record<string, string> = {
@@ -118,6 +119,25 @@ export default function StatsTab() {
                   <Cell key={i} fill={i === weeklyData.length - 1 ? "#3b82f6" : "#1e40af"} />
                 ))}
               </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </section>
+      )}
+
+      {/* 今週の日別実施時間 */}
+      {stats?.weeklyDaily && stats.weeklyDaily.length > 0 && (
+        <section>
+          <h3 className="text-yellow-400 text-sm font-semibold mb-3">📅 今週の日別実施時間</h3>
+          <ResponsiveContainer width="100%" height={140}>
+            <BarChart data={stats.weeklyDaily} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+              <XAxis dataKey="day" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: "#e5e7eb" }}
+                formatter={(v: number) => [`${v}分`, "実施時間"]}
+              />
+              <Bar dataKey="minutes" radius={[4, 4, 0, 0]} fill="#10b981" />
             </BarChart>
           </ResponsiveContainer>
         </section>
