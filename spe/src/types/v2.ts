@@ -146,3 +146,27 @@ export interface StreakV2 {
   created_at: string;
   updated_at: string;
 }
+
+export interface RoutineV2 {
+  id: number;
+  user_id: string;
+  title: string;
+  category: string;
+  estimated_minutes: number;
+  scheduled_start: string;
+  weekday_types: {
+    weekdays: boolean;
+    weekends: boolean;
+  };
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SundayReview {
+  weekNumber: number;
+  mondayVision: string;
+  isAchieved: "yes" | "no" | null;
+  notes: string;
+  date: string;
+}
