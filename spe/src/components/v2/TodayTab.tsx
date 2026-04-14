@@ -299,7 +299,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     };
 
     addRoutinesToday();
-  }, [TODAY, fetchData]);
+  }, [fetchData]);
 
   // Vision モーダルを初回ロード時に表示
   useEffect(() => {
