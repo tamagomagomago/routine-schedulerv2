@@ -39,9 +39,23 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log("POST /api/v2/todos - Request body:", body);
 
+    // todos_v2 テーブルに存在するカラムのみを抽出
+    const allowedFields = [
+      "title", "category", "priority", "estimated_minutes",
+      "scheduled_date", "scheduled_start", "is_mit", "goal_id"
+    ];
+    const filteredBody = Object.keys(body)
+      .filter(key => allowedFields.includes(key))
+      .reduce((obj: any, key) => {
+        obj[key] = body[key];
+        return obj;
+      }, {});
+
+    console.log("POST /api/v2/todos - Filtered body:", filteredBody);
+
     const { data, error } = await supabase
       .from("todos_v2")
-      .insert({ ...body, user_id: "default_user" })
+      .insert({ ...filteredBody, user_id: "default_user" })
       .select()
       .single();
 
