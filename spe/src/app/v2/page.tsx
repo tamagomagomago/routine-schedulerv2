@@ -5,15 +5,17 @@ import TodayTab from "@/components/v2/TodayTab";
 import GoalsTab from "@/components/v2/GoalsTab";
 import FocusTab from "@/components/v2/FocusTab";
 import StatsTab from "@/components/v2/StatsTab";
+import SettingsTab from "@/components/v2/SettingsTab";
 import { TodoV2 } from "@/types/v2";
 
-type Tab = "today" | "goals" | "focus" | "stats";
+type Tab = "today" | "goals" | "focus" | "stats" | "settings";
 
 const TABS: { id: Tab; label: string; emoji: string; color: string; activeColor: string }[] = [
   { id: "today", label: "今日", emoji: "📅", color: "text-gray-500", activeColor: "text-blue-400" },
   { id: "goals", label: "目標", emoji: "🎯", color: "text-gray-500", activeColor: "text-purple-400" },
   { id: "focus", label: "集中", emoji: "⏱", color: "text-gray-500", activeColor: "text-green-400" },
   { id: "stats", label: "統計", emoji: "📊", color: "text-gray-500", activeColor: "text-yellow-400" },
+  { id: "settings", label: "設定", emoji: "⚙️", color: "text-gray-500", activeColor: "text-orange-400" },
 ];
 
 export default function V2Page() {
@@ -40,6 +42,7 @@ export default function V2Page() {
             {currentTab === "goals" && "🎯 目標管理"}
             {currentTab === "focus" && "⏱ 集中タイマー"}
             {currentTab === "stats" && "📊 統計・レビュー"}
+            {currentTab === "settings" && "⚙️ 毎日のルーティン設定"}
           </h1>
           <span className="text-gray-600 text-xs">V2</span>
         </div>
@@ -58,6 +61,9 @@ export default function V2Page() {
         )}
         {currentTab === "stats" && (
           <StatsTab />
+        )}
+        {currentTab === "settings" && (
+          <SettingsTab />
         )}
       </main>
 

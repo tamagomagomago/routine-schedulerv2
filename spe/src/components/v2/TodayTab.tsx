@@ -314,6 +314,10 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
       setTodayVisionConfirmed(true);
       setShowVisionModal(false);
       setVisionModalText("");
+      // Ensure vision section is visible after saving
+      setShowTodayVisionSection(true);
+      localStorage.setItem("v2_show_today_vision_section", "true");
+      console.log("Vision confirmed and saved:", { monday, sunday });
     }
   };
 
@@ -323,8 +327,10 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   };
 
   const openVisionModal = () => {
-    setVisionModalText(weeklyVisionMonday + "---" + weeklyVisionSunday);
+    const modalText = (weeklyVisionMonday || "") + "---" + (weeklyVisionSunday || "");
+    setVisionModalText(modalText);
     setShowVisionModal(true);
+    console.log("Vision modal opened with:", { weeklyVisionMonday, weeklyVisionSunday, modalText });
   };
 
   const handleCompleteVisionEdit = () => {
