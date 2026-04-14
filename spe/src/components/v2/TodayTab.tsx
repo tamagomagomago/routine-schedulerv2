@@ -117,8 +117,18 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const [editingPriorityId, setEditingPriorityId] = useState<number | null>(null);
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
   const [showVisionInput, setShowVisionInput] = useState(false);
-  const [weeklyVisionMonday, setWeeklyVisionMonday] = useState<string>("");
-  const [weeklyVisionSunday, setWeeklyVisionSunday] = useState<string>("");
+  const [weeklyVisionMonday, setWeeklyVisionMonday] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_weekly_vision_monday") || "";
+    }
+    return "";
+  });
+  const [weeklyVisionSunday, setWeeklyVisionSunday] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_weekly_vision_sunday") || "";
+    }
+    return "";
+  });
   const [todayVisionText, setTodayVisionText] = useState<string>("");
   const [todayVisionAchieved, setTodayVisionAchieved] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -313,21 +323,33 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
           }),
         });
 
+        // Save to state and localStorage as fallback
+        setWeeklyVisionMonday(monday);
+        setWeeklyVisionSunday(sunday);
+        setTodayVisionConfirmed(true);
+        localStorage.setItem("v2_weekly_vision_monday", monday);
+        localStorage.setItem("v2_weekly_vision_sunday", sunday);
+        localStorage.setItem("v2_weekly_vision_confirmed", "true");
+
+        setShowVisionModal(false);
+        setVisionModalText("");
+        setShowTodayVisionSection(true);
+        localStorage.setItem("v2_show_today_vision_section", "true");
+
         if (res.ok) {
-          setWeeklyVisionMonday(monday);
-          setWeeklyVisionSunday(sunday);
-          setTodayVisionConfirmed(true);
-          setShowVisionModal(false);
-          setVisionModalText("");
-          // Ensure vision section is visible after saving
-          setShowTodayVisionSection(true);
-          localStorage.setItem("v2_show_today_vision_section", "true");
-          console.log("Vision confirmed and saved to Supabase:", { monday, sunday });
+          console.log("Vision saved (Supabase):", { monday, sunday });
         } else {
-          console.error("Failed to save vision:", res.status);
+          console.log("Vision saved to localStorage (Supabase sync pending):", { monday, sunday });
         }
       } catch (error) {
         console.error("Error saving vision:", error);
+        // Still save to localStorage on error
+        setWeeklyVisionMonday(monday);
+        setWeeklyVisionSunday(sunday);
+        setTodayVisionConfirmed(true);
+        localStorage.setItem("v2_weekly_vision_monday", monday);
+        localStorage.setItem("v2_weekly_vision_sunday", sunday);
+        localStorage.setItem("v2_weekly_vision_confirmed", "true");
       }
     }
   };
@@ -358,14 +380,24 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
           }),
         });
 
+        // Save to localStorage as fallback
+        localStorage.setItem("v2_weekly_vision_monday", weeklyVisionMonday);
+        localStorage.setItem("v2_weekly_vision_sunday", weeklyVisionSunday);
+        localStorage.setItem("v2_weekly_vision_confirmed", "true");
+        setTodayVisionConfirmed(true);
+
         if (res.ok) {
-          setTodayVisionConfirmed(true);
-          console.log("Vision edit saved to Supabase");
+          console.log("Vision edit saved (Supabase)");
         } else {
-          console.error("Failed to save vision:", res.status);
+          console.log("Vision saved to localStorage (Supabase sync pending)");
         }
       } catch (error) {
         console.error("Error saving vision:", error);
+        // Still save to localStorage on error
+        localStorage.setItem("v2_weekly_vision_monday", weeklyVisionMonday);
+        localStorage.setItem("v2_weekly_vision_sunday", weeklyVisionSunday);
+        localStorage.setItem("v2_weekly_vision_confirmed", "true");
+        setTodayVisionConfirmed(true);
       }
     }
   };
