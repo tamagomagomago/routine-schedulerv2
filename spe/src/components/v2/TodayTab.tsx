@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { TodoV2, CreateTodoV2, GoalV2, StreakV2, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_COLOR, PRIORITY_LABEL } from "@/types/v2";
+import { TodoV2, CreateTodoV2, GoalV2, CATEGORY_EMOJI, CATEGORY_LABEL, CATEGORY_COLOR, PRIORITY_COLOR, PRIORITY_LABEL } from "@/types/v2";
 
 const TODAY = new Date().toISOString().split("T")[0];
 const CATEGORIES = ["video", "english", "investment", "ai", "personal", "fitness", "engineer", "life_design"];
@@ -146,14 +146,18 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   });
   const [showVisionModal, setShowVisionModal] = useState(false);
   const [visionModalText, setVisionModalText] = useState("");
-  const [streaks, setStreaks] = useState<StreakV2[]>([]);
-  const [showStreakSection, setShowStreakSection] = useState<boolean>(() => {
+  const [todaysConcerns, setTodaysConcerns] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("v2_show_streak_section") !== "false";
+      return localStorage.getItem("v2_todays_concerns") || "";
+    }
+    return "";
+  });
+  const [showConcernsSection, setShowConcernsSection] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_show_concerns_section") !== "false";
     }
     return true;
   });
-  const [streakConfigEdit, setStreakConfigEdit] = useState(false);
   const [showTodayVisionSection, setShowTodayVisionSection] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("v2_show_today_vision_section") !== "false";
@@ -169,11 +173,10 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [allRes, todayRes, goalsRes, streaksRes, visionRes] = await Promise.all([
+      const [allRes, todayRes, goalsRes, visionRes] = await Promise.all([
         fetch("/api/v2/todos?includeGoalTodos=true").catch(e => { console.error("Fetch error for allTodos:", e); return { ok: false }; }),
         fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`).catch(e => { console.error("Fetch error for todayTodos:", e); return { ok: false }; }),
         fetch("/api/v2/goals").catch(e => { console.error("Fetch error for goals:", e); return { ok: false }; }),
-        fetch("/api/v2/streaks").catch(e => { console.error("Fetch error for streaks:", e); return { ok: false }; }),
         fetch("/api/v2/weekly-visions").catch(e => { console.error("Fetch error for vision:", e); return { ok: false }; }),
       ]);
 
@@ -213,16 +216,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
       } else {
         console.error("goalsRes not ok:", goalsRes.status, goalsRes.statusText);
         setWeeklyGoals([]);
-      }
-
-      if (streaksRes.ok) {
-        const data = await streaksRes.json();
-        setStreaks(Array.isArray(data) ? data : []);
-      } else {
-        console.error("streaksRes not ok:", streaksRes.status, streaksRes.statusText);
-        const errorData = await streaksRes.json().catch(() => ({}));
-        console.error("streaksRes error details:", errorData);
-        setStreaks([]);
       }
 
       if (visionRes.ok) {
@@ -659,20 +652,6 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     localStorage.setItem("v2_today_vision_achieved", String(newStatus));
   };
 
-  const toggleStreakSection = (val: boolean) => {
-    setShowStreakSection(val);
-    localStorage.setItem("v2_show_streak_section", String(val));
-  };
-
-  const toggleStreakEnabled = async (category: string, newEnabled: boolean) => {
-    const res = await fetch("/api/v2/streaks", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, enabled: newEnabled }),
-    });
-    if (res.ok) fetchData();
-  };
-
   const toggleTodayVisionSection = (val: boolean) => {
     setShowTodayVisionSection(val);
     localStorage.setItem("v2_show_today_vision_section", String(val));
@@ -906,63 +885,37 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         )}
       </div>
 
-      {/* ストリークセクション */}
-      {(
-        <div className="mx-4 mb-4 bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggleStreakSection(!showStreakSection)}
-            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-orange-400 text-xs font-semibold">🔥 ストリーク</span>
-              {!showStreakSection && (
-                <span className="text-xs text-gray-600 border border-gray-700 px-1.5 py-0.5 rounded">非表示中</span>
-              )}
-            </div>
-            <div className={`w-8 h-4 rounded-full transition-colors relative ${showStreakSection ? "bg-orange-600" : "bg-gray-700"}`}>
-              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showStreakSection ? "translate-x-4" : "translate-x-0.5"}`} />
-            </div>
-          </button>
-          {showStreakSection && (
-            <div className="px-3 pb-3 space-y-2 border-t border-gray-800 pt-3">
-              {streaks.filter(s => s.enabled).map((streak) => (
-                <div key={streak.id} className="bg-gray-800/40 rounded-lg p-2 border border-gray-700/50 flex items-center justify-between">
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="text-lg">{CATEGORY_EMOJI[streak.category] ?? "📌"}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs text-gray-200">{CATEGORY_LABEL[streak.category] || streak.category}</div>
-                      <div className="text-lg font-bold text-orange-400">{streak.current_streak}日</div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggleStreakEnabled(streak.category, false)}
-                    className="text-gray-600 hover:text-gray-400 text-xs px-2 py-1"
-                    title="無効化"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              {streaks.filter(s => !s.enabled).length > 0 && (
-                <div className="text-xs text-gray-600 border-t border-gray-700/50 pt-2 mt-2">
-                  <p className="mb-2">無効化中のストリーク：</p>
-                  <div className="space-y-1">
-                    {streaks.filter(s => !s.enabled).map((streak) => (
-                      <button
-                        key={streak.id}
-                        onClick={() => toggleStreakEnabled(streak.category, true)}
-                        className="w-full text-left text-gray-500 hover:text-gray-300 text-xs px-2 py-1 rounded hover:bg-gray-800/50 transition-colors"
-                      >
-                        {CATEGORY_EMOJI[streak.category] ?? "📌"} {CATEGORY_LABEL[streak.category] || streak.category} (クリックで有効化)
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {/* 本日の悩み材料セクション */}
+      <div className="mx-4 mb-4 bg-gray-900/80 border border-gray-700 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowConcernsSection(!showConcernsSection)}
+          className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-800/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-red-400 text-xs font-semibold">😰 本日の悩み材料</span>
+            {!showConcernsSection && (
+              <span className="text-xs text-gray-600 border border-gray-700 px-1.5 py-0.5 rounded">非表示中</span>
+            )}
+          </div>
+          <div className={`w-8 h-4 rounded-full transition-colors relative ${showConcernsSection ? "bg-red-600" : "bg-gray-700"}`}>
+            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showConcernsSection ? "translate-x-4" : "translate-x-0.5"}`} />
+          </div>
+        </button>
+        {showConcernsSection && (
+          <div className="px-3 pb-3 border-t border-gray-800 pt-3">
+            <textarea
+              value={todaysConcerns}
+              onChange={(e) => {
+                setTodaysConcerns(e.target.value);
+                localStorage.setItem("v2_todays_concerns", e.target.value);
+              }}
+              placeholder="昼間に浮かんだ疑問や悩みをメモしておきましょう。夜にここを見直して、解決策を考えたり学習できます。例：ReactのuseStateについてもっと理解したい、動画編集の字幕タイミングが難しい..."
+              className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500 resize-none h-24"
+            />
+            <p className="text-xs text-gray-600 mt-2">💡 夜に悩みを見直して、それぞれの解決策を考えましょう</p>
+          </div>
+        )}
+      </div>
 
       {/* 今週のTODO達成後の自分 */}
       <div className={`mx-4 mb-4 rounded-xl overflow-hidden transition-all ${
@@ -1016,7 +969,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 }
               }}
               className="w-full bg-amber-900/30 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500 resize-none"
-              rows={2}
+              rows={4}
             />
           </div>
           <div>
@@ -1033,7 +986,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                 }
               }}
               className="w-full bg-amber-900/30 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500 resize-none"
-              rows={2}
+              rows={4}
             />
           </div>
           {(weeklyVisionMonday || weeklyVisionSunday) && (
