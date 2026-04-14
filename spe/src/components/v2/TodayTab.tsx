@@ -6,18 +6,6 @@ import { TodoV2, CreateTodoV2, GoalV2, StreakV2, CATEGORY_EMOJI, CATEGORY_LABEL,
 const TODAY = new Date().toISOString().split("T")[0];
 const CATEGORIES = ["video", "english", "investment", "ai", "personal", "fitness", "engineer", "life_design"];
 
-// 毎日のプランク
-const PLANK_TITLE = "🧘 プランク";
-
-// 曜日ごとのダンベルトレメニュー（平日のみ）
-const DUMBBELL_MENU: Record<number, string> = {
-  1: "🏋️ ダンベルトレ（胸・肩）",     // 月
-  2: "🏋️ ダンベルトレ（背中・二頭）", // 火
-  3: "🏋️ ダンベルトレ（脚）",         // 水
-  4: "🏋️ ダンベルトレ（胸・肩）",     // 木
-  5: "🏋️ ダンベルトレ（背中・二頭）", // 金
-};
-
 function getThisWeekRange() {
   const today = new Date();
   const day = today.getDay();
@@ -129,18 +117,8 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
   const [editingPriorityId, setEditingPriorityId] = useState<number | null>(null);
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
   const [showVisionInput, setShowVisionInput] = useState(false);
-  const [weeklyVisionMonday, setWeeklyVisionMonday] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("v2_weekly_vision_monday") || "";
-    }
-    return "";
-  });
-  const [weeklyVisionSunday, setWeeklyVisionSunday] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("v2_weekly_vision_sunday") || "";
-    }
-    return "";
-  });
+  const [weeklyVisionMonday, setWeeklyVisionMonday] = useState<string>("");
+  const [weeklyVisionSunday, setWeeklyVisionSunday] = useState<string>("");
   const [todayVisionText, setTodayVisionText] = useState<string>("");
   const [todayVisionAchieved, setTodayVisionAchieved] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -181,11 +159,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [allRes, todayRes, goalsRes, streaksRes] = await Promise.all([
+      const [allRes, todayRes, goalsRes, streaksRes, visionRes] = await Promise.all([
         fetch("/api/v2/todos?includeGoalTodos=true").catch(e => { console.error("Fetch error for allTodos:", e); return { ok: false }; }),
         fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`).catch(e => { console.error("Fetch error for todayTodos:", e); return { ok: false }; }),
         fetch("/api/v2/goals").catch(e => { console.error("Fetch error for goals:", e); return { ok: false }; }),
         fetch("/api/v2/streaks").catch(e => { console.error("Fetch error for streaks:", e); return { ok: false }; }),
+        fetch("/api/v2/weekly-visions").catch(e => { console.error("Fetch error for vision:", e); return { ok: false }; }),
       ]);
 
       if (allRes.ok) {
@@ -235,6 +214,17 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         console.error("streaksRes error details:", errorData);
         setStreaks([]);
       }
+
+      if (visionRes.ok) {
+        const data = await visionRes.json();
+        if (data) {
+          setWeeklyVisionMonday(data.monday_vision || "");
+          setWeeklyVisionSunday(data.sunday_vision || "");
+          setTodayVisionConfirmed(data.is_confirmed || false);
+        }
+      } else {
+        console.error("visionRes not ok:", visionRes.status, visionRes.statusText);
+      }
     } catch (error) {
       console.error("Error in fetchData:", error);
     }
@@ -242,59 +232,64 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
 
-    // プランク＋ダンベルトレーニングを自動追加
-    const day = new Date().getDay();
-
-    const addFitnessRoutine = async () => {
-      const res = await fetch(`/api/v2/todos?date=${TODAY}`);
-      if (res.ok) {
-        const existingTodos = await res.json();
-        const hasPlank = existingTodos?.some((t: TodoV2) => t.title?.includes("プランク"));
-        const hasDumbbell = existingTodos?.some((t: TodoV2) => t.title?.includes("ダンベルトレ"));
-
-        // プランクを追加（毎日）
-        if (!hasPlank) {
-          await fetch("/api/v2/todos", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: PLANK_TITLE,
-              category: "fitness",
-              priority: 3,
-              estimated_minutes: 10,
-              scheduled_date: TODAY,
-              scheduled_start: "06:30",
-            }),
-          });
+  // ルーティンを自動追加
+  useEffect(() => {
+    const addRoutinesToday = async () => {
+      try {
+        const routinesRes = await fetch("/api/v2/routines?today=true");
+        if (!routinesRes.ok) {
+          console.error("Failed to fetch routines:", routinesRes.status);
+          return;
         }
 
-        // ダンベルトレーニングを追加（平日のみ）
-        const isDumbbellDay = [1, 2, 3, 4, 5].includes(day);
-        if (isDumbbellDay && !hasDumbbell) {
-          const dumbbellTitle = DUMBBELL_MENU[day] || "🏋️ ダンベルトレ";
-          await fetch("/api/v2/todos", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: dumbbellTitle,
-              category: "fitness",
-              priority: 3,
-              estimated_minutes: 30,
-              scheduled_date: TODAY,
-              scheduled_start: "07:00",
-            }),
-          });
+        const routines = await routinesRes.json();
+        if (!Array.isArray(routines) || routines.length === 0) {
+          return;
         }
 
-        if (!hasPlank || (isDumbbellDay && !hasDumbbell)) {
+        const todaysRes = await fetch(`/api/v2/todos?date=${TODAY}`);
+        if (!todaysRes.ok) {
+          console.error("Failed to fetch today's todos:", todaysRes.status);
+          return;
+        }
+
+        const todaysTodos = await todaysRes.json();
+        let needsRefresh = false;
+
+        for (const routine of routines) {
+          const exists = todaysTodos?.some(
+            (t: TodoV2) => t.title === routine.title && t.scheduled_date === TODAY
+          );
+
+          if (!exists) {
+            await fetch("/api/v2/todos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: routine.title,
+                category: routine.category,
+                priority: 3,
+                estimated_minutes: routine.estimated_minutes,
+                scheduled_date: TODAY,
+                scheduled_start: routine.scheduled_start,
+              }),
+            });
+            needsRefresh = true;
+          }
+        }
+
+        if (needsRefresh) {
           fetchData();
         }
+      } catch (error) {
+        console.error("Error adding routines:", error);
       }
     };
 
-    addFitnessRoutine();
-  }, [fetchData]);
+    addRoutinesToday();
+  }, [TODAY, fetchData]);
 
   // Vision モーダルを初回ロード時に表示
   useEffect(() => {
@@ -303,21 +298,37 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     }
   }, []);
 
-  const handleVisionConfirm = (text: string) => {
+  const handleVisionConfirm = async (text: string) => {
     const [monday, sunday] = text.split("---").map(s => s.trim());
     if (monday || sunday) {
-      setWeeklyVisionMonday(monday);
-      setWeeklyVisionSunday(sunday);
-      localStorage.setItem("v2_weekly_vision_monday", monday);
-      localStorage.setItem("v2_weekly_vision_sunday", sunday);
-      localStorage.setItem("v2_weekly_vision_confirmed", "true");
-      setTodayVisionConfirmed(true);
-      setShowVisionModal(false);
-      setVisionModalText("");
-      // Ensure vision section is visible after saving
-      setShowTodayVisionSection(true);
-      localStorage.setItem("v2_show_today_vision_section", "true");
-      console.log("Vision confirmed and saved:", { monday, sunday });
+      try {
+        const method = (weeklyVisionMonday || weeklyVisionSunday) ? "PATCH" : "POST";
+        const res = await fetch("/api/v2/weekly-visions", {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            monday_vision: monday,
+            sunday_vision: sunday,
+            is_confirmed: true,
+          }),
+        });
+
+        if (res.ok) {
+          setWeeklyVisionMonday(monday);
+          setWeeklyVisionSunday(sunday);
+          setTodayVisionConfirmed(true);
+          setShowVisionModal(false);
+          setVisionModalText("");
+          // Ensure vision section is visible after saving
+          setShowTodayVisionSection(true);
+          localStorage.setItem("v2_show_today_vision_section", "true");
+          console.log("Vision confirmed and saved to Supabase:", { monday, sunday });
+        } else {
+          console.error("Failed to save vision:", res.status);
+        }
+      } catch (error) {
+        console.error("Error saving vision:", error);
+      }
     }
   };
 
@@ -333,10 +344,29 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     console.log("Vision modal opened with:", { weeklyVisionMonday, weeklyVisionSunday, modalText });
   };
 
-  const handleCompleteVisionEdit = () => {
+  const handleCompleteVisionEdit = async () => {
     if (weeklyVisionMonday.trim() || weeklyVisionSunday.trim()) {
-      localStorage.setItem("v2_weekly_vision_confirmed", "true");
-      setTodayVisionConfirmed(true);
+      try {
+        const method = (weeklyVisionMonday || weeklyVisionSunday) ? "PATCH" : "POST";
+        const res = await fetch("/api/v2/weekly-visions", {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            monday_vision: weeklyVisionMonday,
+            sunday_vision: weeklyVisionSunday,
+            is_confirmed: true,
+          }),
+        });
+
+        if (res.ok) {
+          setTodayVisionConfirmed(true);
+          console.log("Vision edit saved to Supabase");
+        } else {
+          console.error("Failed to save vision:", res.status);
+        }
+      } catch (error) {
+        console.error("Error saving vision:", error);
+      }
     }
   };
 

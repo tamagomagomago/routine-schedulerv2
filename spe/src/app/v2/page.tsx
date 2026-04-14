@@ -15,7 +15,7 @@ const TABS: { id: Tab; label: string; emoji: string; color: string; activeColor:
   { id: "goals", label: "目標", emoji: "🎯", color: "text-gray-500", activeColor: "text-purple-400" },
   { id: "focus", label: "集中", emoji: "⏱", color: "text-gray-500", activeColor: "text-green-400" },
   { id: "stats", label: "統計", emoji: "📊", color: "text-gray-500", activeColor: "text-yellow-400" },
-  { id: "settings", label: "設定", emoji: "⚙️", color: "text-gray-500", activeColor: "text-orange-400" },
+  { id: "settings", label: "習慣", emoji: "🔄", color: "text-gray-500", activeColor: "text-orange-400" },
 ];
 
 export default function V2Page() {
@@ -42,7 +42,7 @@ export default function V2Page() {
             {currentTab === "goals" && "🎯 目標管理"}
             {currentTab === "focus" && "⏱ 集中タイマー"}
             {currentTab === "stats" && "📊 統計・レビュー"}
-            {currentTab === "settings" && "⚙️ 毎日のルーティン設定"}
+            {currentTab === "settings" && "🔄 毎日の習慣設定"}
           </h1>
           <span className="text-gray-600 text-xs">V2</span>
         </div>
