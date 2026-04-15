@@ -245,7 +245,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
   // ルーティンを自動追加
   useEffect(() => {
@@ -302,12 +302,23 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     };
 
     addRoutinesToday();
-  }, [fetchData]);
+  }, []);
 
   // Vision モーダルを初回ロード時に表示
   useEffect(() => {
     if ((weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed) {
       setShowVisionModal(true);
+    }
+  }, []);
+
+  // 日付が変わったときに本日の悩み材料をリセット
+  useEffect(() => {
+    const lastStoredDate = localStorage.getItem("v2_concerns_date");
+    if (lastStoredDate !== TODAY) {
+      // 日付が変わったので、新しい日付で初期化
+      localStorage.setItem("v2_concerns_date", TODAY);
+      setTodaysConcerns(""); // UI をリセット
+      // 前日のデータは既に Supabase に保存されているので履歴として残る
     }
   }, []);
 
