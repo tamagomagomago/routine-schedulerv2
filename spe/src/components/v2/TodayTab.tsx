@@ -173,11 +173,12 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [allRes, todayRes, goalsRes, visionRes] = await Promise.all([
+      const [allRes, todayRes, goalsRes, visionRes, concernsRes] = await Promise.all([
         fetch("/api/v2/todos?includeGoalTodos=true").catch(e => { console.error("Fetch error for allTodos:", e); return { ok: false }; }),
         fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`).catch(e => { console.error("Fetch error for todayTodos:", e); return { ok: false }; }),
         fetch("/api/v2/goals").catch(e => { console.error("Fetch error for goals:", e); return { ok: false }; }),
         fetch("/api/v2/weekly-visions").catch(e => { console.error("Fetch error for vision:", e); return { ok: false }; }),
+        fetch(`/api/v2/daily-concerns?date=${TODAY}`).catch(e => { console.error("Fetch error for concerns:", e); return { ok: false }; }),
       ]);
 
       if (allRes.ok) {
@@ -227,6 +228,15 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         }
       } else {
         console.error("visionRes not ok:", visionRes.status, visionRes.statusText);
+      }
+
+      if (concernsRes.ok) {
+        const data = await concernsRes.json();
+        if (data && data.content) {
+          setTodaysConcerns(data.content);
+        }
+      } else {
+        console.error("concernsRes not ok:", concernsRes.status, concernsRes.statusText);
       }
     } catch (error) {
       console.error("Error in fetchData:", error);
@@ -908,6 +918,15 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
               onChange={(e) => {
                 setTodaysConcerns(e.target.value);
                 localStorage.setItem("v2_todays_concerns", e.target.value);
+                // Save to Supabase
+                fetch("/api/v2/daily-concerns", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    content: e.target.value,
+                    concern_date: TODAY,
+                  }),
+                }).catch(err => console.error("Error saving concerns:", err));
               }}
               placeholder="昼間に浮かんだ疑問や悩みをメモしておきましょう。夜にここを見直して、解決策を考えたり学習できます。例：ReactのuseStateについてもっと理解したい、動画編集の字幕タイミングが難しい..."
               className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500 resize-none h-24"
