@@ -95,6 +95,21 @@ export default function SettingsTab() {
     setShowForm(true);
   };
 
+  const handleToggleEnabled = async (id: number, currentStatus: boolean) => {
+    try {
+      const res = await fetch(`/api/v2/routines/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_enabled: !currentStatus }),
+      });
+      if (res.ok) {
+        fetchRoutines();
+      }
+    } catch (error) {
+      console.error("Error toggling routine:", error);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm("このルーティンを削除しますか？")) return;
 
@@ -260,6 +275,14 @@ export default function SettingsTab() {
               </div>
 
               <div className="flex gap-1">
+                <button
+                  onClick={() => handleToggleEnabled(routine.id, routine.is_enabled)}
+                  className={`px-2 py-1 text-xs rounded transition-colors text-white ${
+                    routine.is_enabled ? "bg-green-700 hover:bg-green-600" : "bg-gray-600 hover:bg-gray-500"
+                  }`}
+                >
+                  {routine.is_enabled ? "ON" : "OFF"}
+                </button>
                 <button
                   onClick={() => handleEdit(routine)}
                   className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors"

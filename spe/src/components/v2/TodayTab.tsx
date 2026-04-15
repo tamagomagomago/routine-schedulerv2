@@ -1184,6 +1184,32 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       </div>
                     </div>
 
+                    {/* 優先度ボタン */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {editingPriorityId === todo.id ? (
+                        <div className="flex gap-0.5">
+                          {([1, 3, 5] as const).map((p) => (
+                            <button
+                              key={p}
+                              onClick={() => handlePriorityChange(todo.id, p)}
+                              className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+                                todo.priority === p ? PRIORITY_COLOR[p] : "border-gray-600 text-gray-500"
+                              }`}
+                            >
+                              {PRIORITY_LABEL[p]}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingPriorityId(todo.id)}
+                          className={`px-2 py-0.5 rounded text-xs border ${PRIORITY_COLOR[todo.priority ?? 3]}`}
+                        >
+                          {PRIORITY_LABEL[todo.priority ?? 3]}
+                        </button>
+                      )}
+                    </div>
+
                     {/* アクション */}
                     <div className="flex items-center gap-2 shrink-0">
                       <button
