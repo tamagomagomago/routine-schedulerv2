@@ -13,29 +13,8 @@ CREATE TABLE daily_concerns (
   UNIQUE(user_id, concern_date)
 );
 
--- Enable RLS
-ALTER TABLE daily_concerns ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-CREATE POLICY "Users can view their own concerns"
-  ON daily_concerns
-  FOR SELECT
-  USING (user_id = current_user_id());
-
-CREATE POLICY "Users can insert their own concerns"
-  ON daily_concerns
-  FOR INSERT
-  WITH CHECK (user_id = current_user_id());
-
-CREATE POLICY "Users can update their own concerns"
-  ON daily_concerns
-  FOR UPDATE
-  USING (user_id = current_user_id());
-
-CREATE POLICY "Users can delete their own concerns"
-  ON daily_concerns
-  FOR DELETE
-  USING (user_id = current_user_id());
+-- RLS is disabled for simplicity (uses default_user)
+-- If using auth in future, enable and update policies to use auth.uid()
 
 -- Grant permissions to roles
 GRANT SELECT, INSERT, UPDATE, DELETE ON daily_concerns TO anon, authenticated, service_role;
