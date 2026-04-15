@@ -34,7 +34,7 @@ export default function SettingsTab() {
 
   useEffect(() => {
     fetchRoutines();
-  }, []);
+  }, [fetchRoutines]);
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) return;

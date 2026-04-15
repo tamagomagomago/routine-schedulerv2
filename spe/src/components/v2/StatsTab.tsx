@@ -12,12 +12,14 @@ interface StatsData {
 }
 
 const BAR_COLORS: Record<string, string> = {
-  vfx: "#a78bfa",
-  english: "#60a5fa",
-  engineer: "#2dd4bf",
-  investment: "#4ade80",
   fitness: "#fb923c",
+  engineer: "#2dd4bf",
+  video: "#f97316",
+  english: "#60a5fa",
+  investment: "#4ade80",
+  ai: "#a855f7",
   personal: "#9ca3af",
+  life_design: "#ec4899",
 };
 
 export default function StatsTab() {
