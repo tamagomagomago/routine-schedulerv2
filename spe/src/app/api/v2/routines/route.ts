@@ -15,16 +15,15 @@ export async function GET(req: NextRequest) {
       .from("routines")
       .select("*")
       .eq("user_id", "default_user")
-      .eq("is_enabled", true)
       .order("scheduled_start", { ascending: true });
 
     if (today === "true") {
-      // Get routines for today based on weekday
+      // Get routines for today based on weekday - only enabled ones
       const dayOfWeek = new Date().getDay();
       const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5; // Monday-Friday
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday-Saturday
 
-      const { data, error } = await query;
+      const { data, error } = await query.eq("is_enabled", true);
 
       // If table doesn't exist, return empty array
       if (error) {

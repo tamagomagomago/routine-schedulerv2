@@ -14,18 +14,20 @@ export async function PATCH(
     const body = await req.json();
     const { id } = params;
 
-    const { title, category, estimated_minutes, scheduled_start, weekday_types } = body;
+    const { title, category, estimated_minutes, scheduled_start, weekday_types, is_enabled } = body;
+
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (category !== undefined) updateData.category = category;
+    if (estimated_minutes !== undefined) updateData.estimated_minutes = estimated_minutes;
+    if (scheduled_start !== undefined) updateData.scheduled_start = scheduled_start;
+    if (weekday_types !== undefined) updateData.weekday_types = weekday_types;
+    if (is_enabled !== undefined) updateData.is_enabled = is_enabled;
+    updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
       .from("routines")
-      .update({
-        ...(title && { title }),
-        ...(category && { category }),
-        ...(estimated_minutes && { estimated_minutes }),
-        ...(scheduled_start && { scheduled_start }),
-        ...(weekday_types && { weekday_types }),
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", id)
       .eq("user_id", "default_user")
       .select()
@@ -41,6 +43,7 @@ export async function PATCH(
         estimated_minutes,
         scheduled_start,
         weekday_types,
+        is_enabled,
       });
     }
 
@@ -56,6 +59,7 @@ export async function PATCH(
       estimated_minutes: body.estimated_minutes,
       scheduled_start: body.scheduled_start,
       weekday_types: body.weekday_types,
+      is_enabled: body.is_enabled,
     });
   }
 }
