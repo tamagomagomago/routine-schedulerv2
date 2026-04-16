@@ -1302,16 +1302,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                         <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
                         <input
                           type="number"
-                          value={editForm.estimated_minutes || 30}
-                          onChange={(e) => setEditForm({ ...editForm, estimated_minutes: Number(e.target.value) })}
+                          value={editForm.estimated_minutes ?? ""}
+                          onChange={(e) => setEditForm({ ...editForm, estimated_minutes: e.target.value === "" ? 0 : Number(e.target.value) })}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               e.preventDefault();
                               handleSaveEdit();
                             }
                           }}
-                          min={5}
-                          step={5}
+                          min={0}
+                          step={1}
                           className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
                         />
                       </div>
@@ -1417,16 +1417,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                     <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
                     <input
                       type="number"
-                      value={form.estimated_minutes}
-                      onChange={(e) => setForm({ ...form, estimated_minutes: Number(e.target.value) })}
+                      value={form.estimated_minutes || ""}
+                      onChange={(e) => setForm({ ...form, estimated_minutes: e.target.value === "" ? 0 : Number(e.target.value) })}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
                           if (form.title.trim()) handleSubmit();
                         }
                       }}
-                      min={5}
-                      step={5}
+                      min={0}
+                      step={1}
                       className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
                     />
                   </div>
@@ -1594,16 +1594,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                           <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
                           <input
                             type="number"
-                            value={editForm.estimated_minutes || 30}
-                            onChange={(e) => setEditForm({ ...editForm, estimated_minutes: Number(e.target.value) })}
+                            value={editForm.estimated_minutes ?? ""}
+                            onChange={(e) => setEditForm({ ...editForm, estimated_minutes: e.target.value === "" ? 0 : Number(e.target.value) })}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
                                 handleSaveEdit();
                               }
                             }}
-                            min={5}
-                            step={5}
+                            min={0}
+                            step={1}
                             className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
                           />
                         </div>
