@@ -15,16 +15,16 @@ export const CATEGORY_LABEL: Record<string, string> = {
 };
 
 export const CATEGORY_EMOJI: Record<string, string> = {
-  video: "🎥",
-  english: "🗣️",
-  investment: "💰",
-  ai: "🤖",
-  personal: "⭐",
-  life_design: "🎯",
+  video: "🎬",
+  english: "🌍",
+  investment: "📈",
+  ai: "🧠",
+  personal: "🚀",
+  life_design: "🌱",
   // レガシーカテゴリー（後方互換性）
-  fitness: "💪",
-  engineer: "📐",
-  vfx: "🎬",
+  fitness: "⚡",
+  engineer: "🔧",
+  vfx: "✨",
 };
 
 export const CATEGORY_COLOR: Record<string, string> = {
@@ -60,6 +60,7 @@ export interface GoalV2 {
   start_date: string;
   end_date: string;
   is_achieved: boolean;
+  description?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -74,6 +75,7 @@ export interface CreateGoalV2 {
   unit?: string;
   start_date: string;
   end_date: string;
+  description?: string;
 }
 
 export interface TodoV2 {
@@ -155,8 +157,13 @@ export interface RoutineV2 {
   estimated_minutes: number;
   scheduled_start: string;
   weekday_types: {
-    weekdays: boolean;
-    weekends: boolean;
+    monday: boolean;
+    tuesday: boolean;
+    wednesday: boolean;
+    thursday: boolean;
+    friday: boolean;
+    saturday: boolean;
+    sunday: boolean;
   };
   is_enabled: boolean;
   created_at: string;

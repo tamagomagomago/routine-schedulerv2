@@ -19,9 +19,9 @@ export async function GET(req: NextRequest) {
 
     if (today === "true") {
       // Get routines for today based on weekday - only enabled ones
-      const dayOfWeek = new Date().getDay();
-      const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5; // Monday-Friday
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday-Saturday
+      const dayOfWeek = new Date().getDay(); // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+      const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const todayName = dayNames[dayOfWeek];
 
       const { data, error } = await query.eq("is_enabled", true);
 
@@ -33,11 +33,23 @@ export async function GET(req: NextRequest) {
 
       if (!data) return NextResponse.json([]);
 
-      // Filter by weekday_types
+      // Filter by weekday_types with backward compatibility
       const filteredData = data.filter((routine: any) => {
         const types = routine.weekday_types;
-        if (isWeekday) return types.weekdays === true;
-        if (isWeekend) return types.weekends === true;
+
+        // Handle new format (individual day properties)
+        if (todayName in types) {
+          return types[todayName] === true;
+        }
+
+        // Handle old format (weekdays/weekends) for backward compatibility
+        if ("weekdays" in types && "weekends" in types) {
+          const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          if (isWeekday) return types.weekdays === true;
+          if (isWeekend) return types.weekends === true;
+        }
+
         return false;
       });
 
@@ -82,7 +94,15 @@ export async function POST(req: NextRequest) {
         category,
         estimated_minutes: estimated_minutes || 30,
         scheduled_start,
-        weekday_types: weekday_types || { weekdays: true, weekends: false },
+        weekday_types: weekday_types || {
+          monday: true,
+          tuesday: true,
+          wednesday: true,
+          thursday: true,
+          friday: true,
+          saturday: false,
+          sunday: false
+        },
       })
       .select()
       .single();
@@ -96,7 +116,15 @@ export async function POST(req: NextRequest) {
         category,
         estimated_minutes: estimated_minutes || 30,
         scheduled_start,
-        weekday_types: weekday_types || { weekdays: true, weekends: false },
+        weekday_types: weekday_types || {
+          monday: true,
+          tuesday: true,
+          wednesday: true,
+          thursday: true,
+          friday: true,
+          saturday: false,
+          sunday: false
+        },
       }, { status: 201 });
     }
 
@@ -111,7 +139,15 @@ export async function POST(req: NextRequest) {
       category: body.category,
       estimated_minutes: body.estimated_minutes || 30,
       scheduled_start: body.scheduled_start,
-      weekday_types: body.weekday_types || { weekdays: true, weekends: false },
+      weekday_types: body.weekday_types || {
+        monday: true,
+        tuesday: true,
+        wednesday: true,
+        thursday: true,
+        friday: true,
+        saturday: false,
+        sunday: false
+      },
     }, { status: 201 });
   }
 }

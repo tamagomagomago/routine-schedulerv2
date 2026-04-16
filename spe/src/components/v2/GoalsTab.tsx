@@ -60,6 +60,7 @@ export default function GoalsTab() {
     unit: "",
     start_date: TODAY,
     end_date: `${THIS_YEAR}-12-31`,
+    description: "",
   });
 
   // 月初セットアップモーダル
@@ -68,6 +69,21 @@ export default function GoalsTab() {
   const [monthlyGoalForm, setMonthlyGoalForm] = useState({ title: "", category: "personal", target_value: "", unit: "" });
   const [weeklyGoalsForm, setWeeklyGoalsForm] = useState<Array<{ week: number; title: string; category: string; target_value: string; unit: string }>>([]);
   const [savingMonthlySetup, setSavingMonthlySetup] = useState(false);
+
+  // 野望欄
+  const [ambitions, setAmbitions] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_ambitions") || "";
+    }
+    return "";
+  });
+  const [showAmbitions, setShowAmbitions] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("v2_show_ambitions") !== "false";
+    }
+    return true;
+  });
+  const [editingAmbitions, setEditingAmbitions] = useState(false);
 
   const fetchData = useCallback(async () => {
     const goalsRes = await fetch("/api/v2/goals");
@@ -189,6 +205,7 @@ export default function GoalsTab() {
       target_value: undefined,
       current_value: 0,
       unit: "",
+      description: "",
       ...defaults,
     });
     setShowModal(true);
@@ -207,6 +224,7 @@ export default function GoalsTab() {
       unit: goal.unit ?? "",
       start_date: goal.start_date,
       end_date: goal.end_date,
+      description: goal.description ?? "",
     });
     setShowModal(true);
   };
@@ -348,6 +366,64 @@ export default function GoalsTab() {
         </div>
       )}
 
+      {/* 野望欄 */}
+      <div className="bg-indigo-950/40 border border-indigo-700 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowAmbitions(!showAmbitions)}
+          className="w-full px-4 py-3 text-left font-bold text-indigo-300 hover:bg-indigo-900/20 transition-colors flex items-center justify-between"
+        >
+          <span>🎯 野望欄</span>
+          <span className="text-sm">{showAmbitions ? "▼" : "▶"}</span>
+        </button>
+        {showAmbitions && (
+          <div className="px-4 py-4 border-t border-indigo-700 space-y-3">
+            {editingAmbitions ? (
+              <>
+                <textarea
+                  value={ambitions}
+                  onChange={(e) => setAmbitions(e.target.value)}
+                  placeholder="あなたの野望や夢を記入してください..."
+                  className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm min-h-40 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem("v2_ambitions", ambitions);
+                      setEditingAmbitions(false);
+                    }}
+                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    💾 保存
+                  </button>
+                  <button
+                    onClick={() => setEditingAmbitions(false)}
+                    className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {ambitions ? (
+                  <div className="bg-gray-900/50 rounded-lg p-3 border border-indigo-800/50">
+                    <p className="text-gray-200 text-sm whitespace-pre-wrap">{ambitions}</p>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm italic">野望がまだ設定されていません</p>
+                )}
+                <button
+                  onClick={() => setEditingAmbitions(true)}
+                  className="w-full py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  ✏️ {ambitions ? "編集" : "追加"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* 年間目標 */}
       <Section
         title="📊 年間目標"
@@ -471,6 +547,20 @@ export default function GoalsTab() {
                   className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 text-sm" />
               </div>
             </div>
+
+            {/* 理由欄（年間目標のみ） */}
+            {form.period_type === "annual" && (
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">理由・背景</label>
+                <textarea
+                  placeholder="この目標を達成したい理由や背景を記入してください...（例：技術スキルを高めてキャリアチェンジしたい）"
+                  value={form.description ?? ""}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={3}
+                />
+              </div>
+            )}
 
             {/* 月間目標追加時：先月の目標を参考表示 */}
             {form.period_type === "monthly" && lastMonthGoals.length > 0 && (
@@ -824,6 +914,15 @@ function GoalCard({ goal, parentLabel, onEdit, onDelete, onProgress }: {
           <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
             <div className={`h-full transition-all duration-500 ${barColor}`} style={{ width: `${progress}%` }} />
           </div>
+        </div>
+      )}
+
+      {goal.description && (
+        <div className="mb-2 p-2 bg-gray-800/50 rounded border border-gray-700/50">
+          <p className="text-xs text-gray-400">
+            <span className="font-semibold text-gray-300">理由: </span>
+            {goal.description}
+          </p>
         </div>
       )}
 

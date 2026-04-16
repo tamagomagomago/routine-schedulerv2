@@ -16,8 +16,13 @@ export default function SettingsTab() {
     category: "fitness",
     estimated_minutes: 30,
     scheduled_start: "06:30",
-    weekdays: true,
-    weekends: false,
+    monday: true,
+    tuesday: true,
+    wednesday: true,
+    thursday: true,
+    friday: true,
+    saturday: false,
+    sunday: false,
   });
 
   const fetchRoutines = useCallback(async () => {
@@ -53,8 +58,13 @@ export default function SettingsTab() {
           estimated_minutes: formData.estimated_minutes,
           scheduled_start: formData.scheduled_start,
           weekday_types: {
-            weekdays: formData.weekdays,
-            weekends: formData.weekends,
+            monday: formData.monday,
+            tuesday: formData.tuesday,
+            wednesday: formData.wednesday,
+            thursday: formData.thursday,
+            friday: formData.friday,
+            saturday: formData.saturday,
+            sunday: formData.sunday,
           },
         }),
       });
@@ -67,8 +77,13 @@ export default function SettingsTab() {
           category: "fitness",
           estimated_minutes: 30,
           scheduled_start: "06:30",
-          weekdays: true,
-          weekends: false,
+          monday: true,
+          tuesday: true,
+          wednesday: true,
+          thursday: true,
+          friday: true,
+          saturday: false,
+          sunday: false,
         });
         fetchRoutines();
       } else {
@@ -89,8 +104,13 @@ export default function SettingsTab() {
       category: routine.category,
       estimated_minutes: routine.estimated_minutes,
       scheduled_start: routine.scheduled_start,
-      weekdays: routine.weekday_types.weekdays,
-      weekends: routine.weekday_types.weekends,
+      monday: routine.weekday_types.monday || false,
+      tuesday: routine.weekday_types.tuesday || false,
+      wednesday: routine.weekday_types.wednesday || false,
+      thursday: routine.weekday_types.thursday || false,
+      friday: routine.weekday_types.friday || false,
+      saturday: routine.weekday_types.saturday || false,
+      sunday: routine.weekday_types.sunday || false,
     });
     setShowForm(true);
   };
@@ -131,8 +151,13 @@ export default function SettingsTab() {
       category: "fitness",
       estimated_minutes: 30,
       scheduled_start: "06:30",
-      weekdays: true,
-      weekends: false,
+      monday: true,
+      tuesday: true,
+      wednesday: true,
+      thursday: true,
+      friday: true,
+      saturday: false,
+      sunday: false,
     });
   };
 
@@ -204,25 +229,41 @@ export default function SettingsTab() {
 
           <div className="space-y-2">
             <label className="text-xs text-gray-500 block">実行曜日</label>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={formData.weekdays}
-                  onChange={(e) => setFormData({ ...formData, weekdays: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                平日
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={formData.weekends}
-                  onChange={(e) => setFormData({ ...formData, weekends: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                休日
-              </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                {["月", "火", "水", "木", "金"].map((day, i) => {
+                  const dayKeys = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const;
+                  const dayKey = dayKeys[i];
+                  return (
+                    <label key={day} className="flex items-center gap-1 text-sm text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={formData[dayKey]}
+                        onChange={(e) => setFormData({ ...formData, [dayKey]: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      {day}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {["土", "日"].map((day, i) => {
+                  const dayKeys = ["saturday", "sunday"] as const;
+                  const dayKey = dayKeys[i];
+                  return (
+                    <label key={day} className="flex items-center gap-1 text-sm text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={formData[dayKey]}
+                        onChange={(e) => setFormData({ ...formData, [dayKey]: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      {day}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -263,11 +304,16 @@ export default function SettingsTab() {
                   <span>{CATEGORY_LABEL[routine.category]}</span>
                   <span>•</span>
                   <span>
-                    {routine.weekday_types.weekdays && routine.weekday_types.weekends
-                      ? "毎日"
-                      : routine.weekday_types.weekdays
-                      ? "平日のみ"
-                      : "休日のみ"}
+                    {(() => {
+                      const days = routine.weekday_types;
+                      const allDays = [days.monday, days.tuesday, days.wednesday, days.thursday, days.friday, days.saturday, days.sunday];
+                      const selectedDays = allDays.filter(d => d).length;
+                      if (selectedDays === 7) return "毎日";
+                      if (selectedDays === 5 && days.monday && days.tuesday && days.wednesday && days.thursday && days.friday) return "平日のみ";
+                      if (selectedDays === 2 && days.saturday && days.sunday) return "休日のみ";
+                      const dayLabels = ["月", "火", "水", "木", "金", "土", "日"];
+                      return dayLabels.filter((_, i) => allDays[i]).join("");
+                    })()}
                   </span>
                   <span>•</span>
                   <span>{routine.estimated_minutes}分</span>

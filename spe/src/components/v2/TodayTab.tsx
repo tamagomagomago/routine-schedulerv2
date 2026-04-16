@@ -1114,7 +1114,11 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
             <p className="text-gray-600 text-sm text-center py-4">TODOはありません</p>
           ) : (
             <>
-              {allTodosSorted.map((todo) => (
+              {/* 今週のTODO */}
+              {allTodosSorted.filter(t => t.scheduled_date && t.scheduled_date >= getThisWeekRange().start && t.scheduled_date <= getThisWeekRange().end).length > 0 && (
+                <>
+                  <div className="text-amber-400 text-xs font-semibold mt-4 mb-2">📅 今週のTODO</div>
+                  {allTodosSorted.filter(t => t.scheduled_date && t.scheduled_date >= getThisWeekRange().start && t.scheduled_date <= getThisWeekRange().end).map((todo) => (
                 <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-xl p-3">
                   <div className="flex items-start gap-2">
                     {/* 内容 */}
@@ -1311,7 +1315,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                         <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
                         <input
                           type="number"
-                          value={editForm.estimated_minutes ?? ""}
+                          value={editForm.estimated_minutes !== undefined ? editForm.estimated_minutes : ""}
                           onChange={(e) => setEditForm({ ...editForm, estimated_minutes: e.target.value === "" ? 0 : Number(e.target.value) })}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -1365,7 +1369,168 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                     </div>
                   )}
                 </div>
-              ))}
+                  ))}
+                </>
+              )}
+
+              {/* 来週以降のTODO */}
+              {allTodosSorted.filter(t => t.scheduled_date && t.scheduled_date > getThisWeekRange().end).length > 0 && (
+                <>
+                  <div className="text-gray-400 text-xs font-semibold mt-4 mb-2">📅 来週以降のTODO</div>
+                  {allTodosSorted.filter(t => t.scheduled_date && t.scheduled_date > getThisWeekRange().end).map((todo) => (
+                <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                  <div className="flex items-start gap-2">
+                    {/* 内容 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-2 mb-1">
+                        <span className="text-lg shrink-0">{CATEGORY_EMOJI[todo.category] ?? "📌"}</span>
+                        {editingField === "title" && editingTodoId === todo.id ? (
+                          <input
+                            autoFocus
+                            defaultValue={todo.title}
+                            onBlur={(e) => {
+                              if (editingField === "title" && editingTodoId === todo.id) {
+                                handleInlineEditSave(todo.id, "title", e.currentTarget.value);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                e.preventDefault();
+                                handleInlineEditSave(todo.id, "title", e.currentTarget.value);
+                                setEditingField(null);
+                                setEditingTodoId(null);
+                              }
+                              if (e.key === "Escape") {
+                                e.preventDefault();
+                                setEditingField(null);
+                                setEditingTodoId(null);
+                              }
+                            }}
+                            className="flex-1 bg-gray-700 text-white rounded-lg px-2 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p
+                            onClick={() => handleInlineEditStart("title", todo.id)}
+                            className="text-sm font-medium text-gray-100 break-words flex-1 cursor-pointer hover:text-blue-300"
+                          >
+                            {todo.title}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className={`px-1.5 py-0.5 rounded border ${CATEGORY_COLOR[todo.category] ?? CATEGORY_COLOR.personal}`}>
+                          {CATEGORY_LABEL[todo.category]}
+                        </span>
+                        {todo.scheduled_date && <span className="text-gray-500">{todo.scheduled_date}</span>}
+                        {todo.scheduled_start && <span className="text-gray-500">⏰ {todo.scheduled_start?.slice(0, 5)}</span>}
+                        {todo.estimated_minutes && <span className="text-gray-500">⏱ {todo.estimated_minutes}分</span>}
+                      </div>
+                    </div>
+
+                    {/* アクション */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleEdit(todo)}
+                        className="text-gray-700 hover:text-blue-400 text-sm transition-colors"
+                        title="編集"
+                      >
+                        📝
+                      </button>
+                      <button
+                        onClick={() => handleDelete(todo.id)}
+                        className="text-gray-700 hover:text-red-500 text-sm transition-colors"
+                        title="削除"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                  {/* TODOリスト画面での編集フォーム */}
+                  {activeTab === "list" && editingTodoId === todo.id && editForm && (
+                    <div className="mt-3 pt-3 border-t border-gray-700 space-y-3">
+                      <input
+                        placeholder="タスク名"
+                        value={editForm.title || ""}
+                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault();
+                            handleSaveEdit();
+                          }
+                        }}
+                        className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">カテゴリ</label>
+                          <select
+                            value={editForm.category || "personal"}
+                            onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                            className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                          >
+                            {CATEGORIES.map((c) => (
+                              <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">優先度</label>
+                          <div className="flex gap-1">
+                            {([1, 3, 5] as const).map((p) => (
+                              <button
+                                key={p}
+                                onClick={() => setEditForm({ ...editForm, priority: p })}
+                                className={`flex-1 py-1.5 rounded text-xs border transition-colors ${
+                                  editForm.priority === p ? PRIORITY_COLOR[p] : "border-gray-600 text-gray-500"
+                                }`}
+                              >
+                                {PRIORITY_LABEL[p]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
+                        <input
+                          type="number"
+                          value={editForm.estimated_minutes !== undefined ? editForm.estimated_minutes : ""}
+                          onChange={(e) => setEditForm({ ...editForm, estimated_minutes: e.target.value === "" ? 0 : Number(e.target.value) })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleSaveEdit();
+                            }
+                          }}
+                          min={0}
+                          step={1}
+                          className="w-full bg-gray-700 text-white rounded-lg px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={loading}
+                          className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          💾 保存
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingTodoId(null);
+                            setEditForm(null);
+                          }}
+                          className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          ✕ キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                  ))}
+                </>
+              )}
               {/* TODOリストへの追加ボタン */}
               <button
                 onClick={() => setShowForm((v) => !v)}
@@ -1603,7 +1768,7 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                           <label className="text-xs text-gray-500 mb-1 block">見積（分）</label>
                           <input
                             type="number"
-                            value={editForm.estimated_minutes ?? ""}
+                            value={editForm.estimated_minutes !== undefined ? editForm.estimated_minutes : ""}
                             onChange={(e) => setEditForm({ ...editForm, estimated_minutes: e.target.value === "" ? 0 : Number(e.target.value) })}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
