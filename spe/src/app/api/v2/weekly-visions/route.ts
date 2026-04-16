@@ -46,7 +46,26 @@ export async function POST(req: NextRequest) {
 
     const weekStart = getWeekMonday();
 
-    const { data, error } = await supabase
+    // First try to update existing record
+    const { data: updateData, error: updateError } = await supabase
+      .from("weekly_visions")
+      .update({
+        monday_vision,
+        sunday_vision,
+        is_confirmed: is_confirmed || false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", "default_user")
+      .eq("week_start", weekStart)
+      .select()
+      .single();
+
+    if (updateData) {
+      return NextResponse.json(updateData, { status: 200 });
+    }
+
+    // If update returned no rows, insert new record
+    const { data: insertData, error: insertError } = await supabase
       .from("weekly_visions")
       .insert({
         user_id: "default_user",
@@ -58,31 +77,21 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (error) {
-      console.warn("Could not save to Supabase:", error.message);
-      // Return success anyway - client will use localStorage as fallback
-      return NextResponse.json({
-        user_id: "default_user",
-        week_start: weekStart,
-        monday_vision,
-        sunday_vision,
-        is_confirmed: is_confirmed || false,
-      }, { status: 201 });
+    if (insertError) {
+      console.error("Could not save to Supabase:", insertError.message);
+      return NextResponse.json(
+        { error: "Failed to save weekly vision", details: insertError.message },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(insertData, { status: 201 });
   } catch (error) {
     console.error("Error creating weekly vision:", error);
-    // Return the data anyway so client knows save succeeded (will use localStorage)
-    const body = await req.json();
-    const weekStart = getWeekMonday();
-    return NextResponse.json({
-      user_id: "default_user",
-      week_start: weekStart,
-      monday_vision: body.monday_vision,
-      sunday_vision: body.sunday_vision,
-      is_confirmed: body.is_confirmed || false,
-    }, { status: 201 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -107,31 +116,19 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) {
-      console.warn("Could not update in Supabase:", error.message);
-      // Return success anyway - client will use localStorage as fallback
-      return NextResponse.json({
-        user_id: "default_user",
-        week_start: weekStart,
-        monday_vision,
-        sunday_vision,
-        is_confirmed,
-        updated_at: new Date().toISOString(),
-      });
+      console.error("Could not update in Supabase:", error.message);
+      return NextResponse.json(
+        { error: "Failed to update weekly vision", details: error.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error updating weekly vision:", error);
-    // Return the data anyway so client knows update succeeded (will use localStorage)
-    const body = await req.json();
-    const weekStart = getWeekMonday();
-    return NextResponse.json({
-      user_id: "default_user",
-      week_start: weekStart,
-      monday_vision: body.monday_vision,
-      sunday_vision: body.sunday_vision,
-      is_confirmed: body.is_confirmed,
-      updated_at: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

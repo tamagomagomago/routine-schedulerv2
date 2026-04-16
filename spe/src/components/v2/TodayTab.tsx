@@ -247,10 +247,25 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     fetchData();
   }, []);
 
-  // ルーティンを自動追加
+  // ルーティンを5AMに自動追加
   useEffect(() => {
     const addRoutinesToday = async () => {
       try {
+        // 5AM～5:59の間のみ実行
+        const now = new Date();
+        const hour = now.getHours();
+        if (hour !== 5) {
+          console.log("Not 5 AM hour, skipping routine auto-add");
+          return;
+        }
+
+        // 本日既に実行済みかチェック
+        const lastRunDate = localStorage.getItem("v2_routines_auto_add_date");
+        if (lastRunDate === TODAY) {
+          console.log("Routines already auto-added today");
+          return;
+        }
+
         const routinesRes = await fetch("/api/v2/routines?today=true");
         if (!routinesRes.ok) {
           console.error("Failed to fetch routines:", routinesRes.status);
@@ -296,13 +311,16 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         if (needsRefresh) {
           fetchData();
         }
+
+        // 実行済みフラグを保存
+        localStorage.setItem("v2_routines_auto_add_date", TODAY);
       } catch (error) {
         console.error("Error adding routines:", error);
       }
     };
 
     addRoutinesToday();
-  }, []);
+  }, [fetchData]);
 
   // Vision モーダルを初回ロード時に表示
   useEffect(() => {

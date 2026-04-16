@@ -50,9 +50,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    // First try to update existing record
+    const { data: updateData, error: updateError } = await supabase
       .from("daily_concerns")
-      .upsert({
+      .update({
+        content,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", "default_user")
+      .eq("concern_date", concern_date)
+      .select()
+      .single();
+
+    if (updateData) {
+      return NextResponse.json(updateData, { status: 200 });
+    }
+
+    // If update returned no rows, insert new record
+    const { data: insertData, error: insertError } = await supabase
+      .from("daily_concerns")
+      .insert({
         user_id: "default_user",
         concern_date,
         content,
@@ -60,25 +77,20 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (error) {
-      console.warn("Could not save daily concerns:", error.message);
-      // Return success anyway - client will use localStorage as fallback
-      return NextResponse.json({
-        user_id: "default_user",
-        concern_date,
-        content,
-      }, { status: 201 });
+    if (insertError) {
+      console.error("Could not save daily concerns:", insertError.message);
+      return NextResponse.json(
+        { error: "Failed to save daily concerns", details: insertError.message },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(insertData, { status: 201 });
   } catch (error) {
     console.error("POST /api/v2/daily-concerns error:", error);
-    // Return the data anyway so client knows save succeeded
-    const body = await req.json();
-    return NextResponse.json({
-      user_id: "default_user",
-      concern_date: body.concern_date,
-      content: body.content,
-    }, { status: 201 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
