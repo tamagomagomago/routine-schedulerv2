@@ -130,7 +130,20 @@ export interface WeeklyReviewV2 {
   week_start: string;
   achievement_rate?: number | null;
   memo?: string | null;
+  plan_achievements?: Array<{ category: string; rate: number; reason: string }> | null;
+  learnings?: string[] | null;
+  current_state?: string | null;
+  next_week_adjustments?: string[] | null;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface PDCAReviewV2 {
+  week_start: string;
+  plan_achievements: Array<{ category: string; rate: number; reason: string }>;
+  learnings: string[];
+  current_state: string;
+  next_week_adjustments: string[];
 }
 
 export interface StatsV2 {

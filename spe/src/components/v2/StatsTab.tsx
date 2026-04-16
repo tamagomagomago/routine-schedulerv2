@@ -11,6 +11,13 @@ interface StatsData {
   weeklyDaily?: { day: string; categories: Record<string, number> }[];
 }
 
+interface PDCAForm {
+  plan_achievements: Array<{ category: string; rate: number; reason: string }>;
+  learnings: string[];
+  current_state: string;
+  next_week_adjustments: string[];
+}
+
 const BAR_COLORS: Record<string, string> = {
   fitness: "#fb923c",
   engineer: "#2dd4bf",
@@ -22,13 +29,40 @@ const BAR_COLORS: Record<string, string> = {
   life_design: "#ec4899",
 };
 
+const ALL_CATEGORIES = ["video", "english", "investment", "ai", "personal", "life_design", "fitness", "engineer", "vfx"];
+
 export default function StatsTab() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [reviews, setReviews] = useState<WeeklyReviewV2[]>([]);
-  const [reviewForm, setReviewForm] = useState({ achievement_rate: 70, memo: "" });
+  const [reviewForm, setReviewForm] = useState<PDCAForm>({
+    plan_achievements: ALL_CATEGORIES.map(cat => ({ category: cat, rate: 0, reason: "" })),
+    learnings: [""],
+    current_state: "",
+    next_week_adjustments: [""],
+  });
   const [saving, setSaving] = useState(false);
+  const [showPDCAModal, setShowPDCAModal] = useState(false);
 
   useEffect(() => {
+    fetchData();
+
+    // 日曜日で今週のレビューがなければモーダル表示
+    const today = new Date();
+    if (today.getDay() === 0) {
+      const thisWeek = getThisWeekMonday();
+      fetch("/api/v2/reviews?limit=8")
+        .then((r) => r.json())
+        .catch(() => [])
+        .then((reviewList: WeeklyReviewV2[]) => {
+          const existing = reviewList.find((rv) => rv.week_start === thisWeek);
+          if (!existing) {
+            setShowPDCAModal(true);
+          }
+        });
+    }
+  }, []);
+
+  const fetchData = async () => {
     Promise.all([
       fetch("/api/v2/stats?weeks=4").then((r) => r.json()).catch(() => null),
       fetch("/api/v2/reviews?limit=8").then((r) => r.json()).catch(() => []),
@@ -39,9 +73,16 @@ export default function StatsTab() {
       // 今週のレビューがあれば読み込む
       const thisWeek = getThisWeekMonday();
       const existing = reviewList.find((rv: WeeklyReviewV2) => rv.week_start === thisWeek);
-      if (existing) setReviewForm({ achievement_rate: existing.achievement_rate ?? 70, memo: existing.memo ?? "" });
+      if (existing && existing.plan_achievements) {
+        setReviewForm({
+          plan_achievements: existing.plan_achievements,
+          learnings: existing.learnings ?? [""],
+          current_state: existing.current_state ?? "",
+          next_week_adjustments: existing.next_week_adjustments ?? [""],
+        });
+      }
     });
-  }, []);
+  };
 
   const handleSaveReview = async () => {
     setSaving(true);
@@ -49,10 +90,16 @@ export default function StatsTab() {
       await fetch("/api/v2/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ week_start: getThisWeekMonday(), ...reviewForm }),
+        body: JSON.stringify({
+          week_start: getThisWeekMonday(),
+          plan_achievements: reviewForm.plan_achievements,
+          learnings: reviewForm.learnings.filter(l => l.trim()),
+          current_state: reviewForm.current_state,
+          next_week_adjustments: reviewForm.next_week_adjustments.filter(a => a.trim()),
+        }),
       });
-      const res = await fetch("/api/v2/reviews?limit=8");
-      setReviews(await res.json());
+      await fetchData();
+      setShowPDCAModal(false);
     } finally {
       setSaving(false);
     }
@@ -238,61 +285,433 @@ export default function StatsTab() {
         </section>
       )}
 
-      {/* 週次レビュー */}
+      {/* PDCA レビューモーダル */}
+      {showPDCAModal && (
+        <PDCAModal
+          form={reviewForm}
+          setForm={setReviewForm}
+          onSave={handleSaveReview}
+          saving={saving}
+          onClose={() => setShowPDCAModal(false)}
+        />
+      )}
+
+      {/* 週次 PDCA レビュー */}
       <section>
-        <h3 className="text-yellow-400 text-sm font-semibold mb-3">📝 今週のレビュー</h3>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-4">
+        <h3 className="text-yellow-400 text-sm font-semibold mb-3">📝 今週の PDCA レビュー</h3>
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-6">
+          {/* Plan 達成度 */}
           <div>
-            <div className="flex justify-between text-xs text-gray-400 mb-2">
-              <span>達成率</span>
-              <span className="font-bold text-white">{reviewForm.achievement_rate}%</span>
-            </div>
-            <input
-              type="range" min={0} max={100} step={5}
-              value={reviewForm.achievement_rate}
-              onChange={(e) => setReviewForm({ ...reviewForm, achievement_rate: Number(e.target.value) })}
-              className="w-full accent-green-500"
-            />
-            <div className="flex justify-between text-xs text-gray-700 mt-1">
-              <span>0%</span><span>50%</span><span>100%</span>
+            <h4 className="text-cyan-400 text-xs font-semibold mb-3">📊 Plan 達成度（各カテゴリ）</h4>
+            <div className="space-y-4">
+              {reviewForm.plan_achievements.map((item, idx) => {
+                const emoji = CATEGORY_EMOJI[item.category] ?? "📌";
+                return (
+                  <div key={item.category} className="space-y-2 pb-3 border-b border-gray-700 last:border-b-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-300">{emoji} {item.category}</span>
+                      <span className="text-sm font-bold text-cyan-400">{item.rate}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={item.rate}
+                      onChange={(e) => {
+                        const updated = [...reviewForm.plan_achievements];
+                        updated[idx].rate = Number(e.target.value);
+                        setReviewForm({ ...reviewForm, plan_achievements: updated });
+                      }}
+                      className="w-full accent-cyan-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="理由（なぜこの達成度か）"
+                      value={item.reason}
+                      onChange={(e) => {
+                        const updated = [...reviewForm.plan_achievements];
+                        updated[idx].reason = e.target.value;
+                        setReviewForm({ ...reviewForm, plan_achievements: updated });
+                      }}
+                      className="w-full bg-gray-800 text-gray-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <textarea
-            placeholder="今週の振り返り・来週の改善点..."
-            value={reviewForm.memo}
-            onChange={(e) => setReviewForm({ ...reviewForm, memo: e.target.value })}
-            rows={3}
-            className="w-full bg-gray-800 text-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-yellow-500"
-          />
+
+          {/* 学び */}
+          <div>
+            <h4 className="text-green-400 text-xs font-semibold mb-3">💡 学び（今週で得た学習や気づき）</h4>
+            <div className="space-y-2">
+              {reviewForm.learnings.map((learning, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={`学び ${idx + 1}`}
+                    value={learning}
+                    onChange={(e) => {
+                      const updated = [...reviewForm.learnings];
+                      updated[idx] = e.target.value;
+                      setReviewForm({ ...reviewForm, learnings: updated });
+                    }}
+                    className="flex-1 bg-gray-800 text-gray-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500"
+                  />
+                  {reviewForm.learnings.length > 1 && (
+                    <button
+                      onClick={() => {
+                        setReviewForm({
+                          ...reviewForm,
+                          learnings: reviewForm.learnings.filter((_, i) => i !== idx),
+                        });
+                      }}
+                      className="text-red-400 hover:text-red-300 text-xs px-2"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  setReviewForm({
+                    ...reviewForm,
+                    learnings: [...reviewForm.learnings, ""],
+                  });
+                }}
+                className="text-xs text-green-500 hover:text-green-400 mt-1"
+              >
+                + 学び追加
+              </button>
+            </div>
+          </div>
+
+          {/* 現在地 → 来週の調整 */}
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-indigo-400 text-xs font-semibold mb-2">📍 現在地</h4>
+              <textarea
+                placeholder="現在の状態・課題を記述"
+                value={reviewForm.current_state}
+                onChange={(e) => setReviewForm({ ...reviewForm, current_state: e.target.value })}
+                rows={2}
+                className="w-full bg-gray-800 text-gray-200 text-xs rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <h4 className="text-orange-400 text-xs font-semibold mb-3">🎯 来週の調整</h4>
+              <div className="space-y-2">
+                {reviewForm.next_week_adjustments.map((adj, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder={`調整 ${idx + 1}`}
+                      value={adj}
+                      onChange={(e) => {
+                        const updated = [...reviewForm.next_week_adjustments];
+                        updated[idx] = e.target.value;
+                        setReviewForm({ ...reviewForm, next_week_adjustments: updated });
+                      }}
+                      className="flex-1 bg-gray-800 text-gray-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                    {reviewForm.next_week_adjustments.length > 1 && (
+                      <button
+                        onClick={() => {
+                          setReviewForm({
+                            ...reviewForm,
+                            next_week_adjustments: reviewForm.next_week_adjustments.filter(
+                              (_, i) => i !== idx
+                            ),
+                          });
+                        }}
+                        className="text-red-400 hover:text-red-300 text-xs px-2"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={() => {
+                    setReviewForm({
+                      ...reviewForm,
+                      next_week_adjustments: [...reviewForm.next_week_adjustments, ""],
+                    });
+                  }}
+                  className="text-xs text-orange-500 hover:text-orange-400 mt-1"
+                >
+                  + 調整追加
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 保存ボタン */}
           <button
             onClick={handleSaveReview}
             disabled={saving}
             className="w-full py-2 bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
           >
-            {saving ? "保存中..." : "レビューを保存"}
+            {saving ? "保存中..." : "PDCA レビューを保存"}
           </button>
         </div>
       </section>
 
-      {/* 過去のレビュー */}
+      {/* 過去のレビュー履歴 */}
       {reviews.length > 0 && (
         <section>
-          <h3 className="text-gray-500 text-xs font-semibold mb-2">過去のレビュー</h3>
-          <div className="space-y-2">
-            {reviews.slice(0, 4).map((r) => (
-              <div key={r.id} className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">{formatWeekLabel(r.week_start)}の週</span>
-                  <span className={`text-xs font-bold ${(r.achievement_rate ?? 0) >= 70 ? "text-green-400" : (r.achievement_rate ?? 0) >= 40 ? "text-yellow-400" : "text-red-400"}`}>
-                    {r.achievement_rate ?? "—"}%
-                  </span>
+          <h3 className="text-gray-500 text-xs font-semibold mb-3">📚 過去の PDCA レビュー履歴</h3>
+          <div className="space-y-3">
+            {reviews.slice(0, 8).map((r) => (
+              <details
+                key={r.id}
+                className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 cursor-pointer hover:border-gray-700"
+              >
+                <summary className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400">{formatWeekLabel(r.week_start)} の週</span>
+                  {r.plan_achievements && r.plan_achievements.length > 0 && (
+                    <span className="text-gray-500">
+                      {Math.round(
+                        r.plan_achievements.reduce((sum, a) => sum + a.rate, 0) /
+                          r.plan_achievements.length
+                      )}% 平均達成度
+                    </span>
+                  )}
+                </summary>
+                <div className="text-xs text-gray-400 mt-2 space-y-2 pl-2 border-l border-gray-700">
+                  {r.plan_achievements && r.plan_achievements.length > 0 && (
+                    <div>
+                      <span className="text-cyan-400 font-semibold">達成度:</span>
+                      <div className="ml-2 mt-1 space-y-1">
+                        {r.plan_achievements
+                          .filter((a) => a.rate > 0)
+                          .map((a) => (
+                            <div key={a.category}>
+                              {CATEGORY_EMOJI[a.category]} {a.category}: {a.rate}%
+                              {a.reason && <span className="text-gray-600"> ({a.reason})</span>}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                  {r.learnings && r.learnings.length > 0 && (
+                    <div>
+                      <span className="text-green-400 font-semibold">学び:</span>
+                      <div className="ml-2 mt-1 space-y-1">
+                        {r.learnings.map((l, i) => (
+                          <div key={i}>• {l}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {r.current_state && (
+                    <div>
+                      <span className="text-indigo-400 font-semibold">現在地:</span>
+                      <div className="ml-2 mt-1">{r.current_state}</div>
+                    </div>
+                  )}
+                  {r.next_week_adjustments && r.next_week_adjustments.length > 0 && (
+                    <div>
+                      <span className="text-orange-400 font-semibold">来週の調整:</span>
+                      <div className="ml-2 mt-1 space-y-1">
+                        {r.next_week_adjustments.map((a, i) => (
+                          <div key={i}>→ {a}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {r.memo && <p className="text-xs text-gray-600 mt-0.5 truncate">{r.memo}</p>}
-              </div>
+              </details>
             ))}
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+// PDCA モーダルコンポーネント
+interface PDCAModalProps {
+  form: PDCAForm;
+  setForm: (form: PDCAForm) => void;
+  onSave: () => void;
+  saving: boolean;
+  onClose: () => void;
+}
+
+function PDCAModal({ form, setForm, onSave, saving, onClose }: PDCAModalProps) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-yellow-400 text-lg font-bold">📝 今週のPDCAレビュー</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-200 text-xl">
+            ✕
+          </button>
+        </div>
+
+        {/* Plan 達成度 */}
+        <div className="space-y-2">
+          <h3 className="text-cyan-400 text-sm font-semibold">📊 Plan 達成度（各カテゴリ）</h3>
+          <div className="space-y-3 bg-gray-800 rounded p-3">
+            {form.plan_achievements.map((item, idx) => {
+              const emoji = CATEGORY_EMOJI[item.category] ?? "📌";
+              return (
+                <div key={item.category} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-300">{emoji} {item.category}</span>
+                    <span className="text-xs font-bold text-cyan-400">{item.rate}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={item.rate}
+                    onChange={(e) => {
+                      const updated = [...form.plan_achievements];
+                      updated[idx].rate = Number(e.target.value);
+                      setForm({ ...form, plan_achievements: updated });
+                    }}
+                    className="w-full accent-cyan-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="理由"
+                    value={item.reason}
+                    onChange={(e) => {
+                      const updated = [...form.plan_achievements];
+                      updated[idx].reason = e.target.value;
+                      setForm({ ...form, plan_achievements: updated });
+                    }}
+                    className="w-full bg-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 学び */}
+        <div className="space-y-2">
+          <h3 className="text-green-400 text-sm font-semibold">💡 学び</h3>
+          <div className="space-y-2 bg-gray-800 rounded p-3">
+            {form.learnings.map((learning, idx) => (
+              <div key={idx} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="学び"
+                  value={learning}
+                  onChange={(e) => {
+                    const updated = [...form.learnings];
+                    updated[idx] = e.target.value;
+                    setForm({ ...form, learnings: updated });
+                  }}
+                  className="flex-1 bg-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+                {form.learnings.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setForm({
+                        ...form,
+                        learnings: form.learnings.filter((_, i) => i !== idx),
+                      });
+                    }}
+                    className="text-red-400 hover:text-red-300 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => {
+                setForm({ ...form, learnings: [...form.learnings, ""] });
+              }}
+              className="text-xs text-green-500 hover:text-green-400"
+            >
+              + 追加
+            </button>
+          </div>
+        </div>
+
+        {/* 現在地 → 来週の調整 */}
+        <div className="space-y-2">
+          <h3 className="text-indigo-400 text-sm font-semibold">📍 現在地</h3>
+          <textarea
+            placeholder="現在の状態・課題"
+            value={form.current_state}
+            onChange={(e) => setForm({ ...form, current_state: e.target.value })}
+            rows={2}
+            className="w-full bg-gray-800 text-gray-200 text-xs rounded px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-orange-400 text-sm font-semibold">🎯 来週の調整</h3>
+          <div className="space-y-2 bg-gray-800 rounded p-3">
+            {form.next_week_adjustments.map((adj, idx) => (
+              <div key={idx} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="調整"
+                  value={adj}
+                  onChange={(e) => {
+                    const updated = [...form.next_week_adjustments];
+                    updated[idx] = e.target.value;
+                    setForm({ ...form, next_week_adjustments: updated });
+                  }}
+                  className="flex-1 bg-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                />
+                {form.next_week_adjustments.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setForm({
+                        ...form,
+                        next_week_adjustments: form.next_week_adjustments.filter(
+                          (_, i) => i !== idx
+                        ),
+                      });
+                    }}
+                    className="text-red-400 hover:text-red-300 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => {
+                setForm({
+                  ...form,
+                  next_week_adjustments: [...form.next_week_adjustments, ""],
+                });
+              }}
+              className="text-xs text-orange-500 hover:text-orange-400"
+            >
+              + 追加
+            </button>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-4">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            キャンセル
+          </button>
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="flex-1 py-2 bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            {saving ? "保存中..." : "保存"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

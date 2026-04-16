@@ -247,18 +247,10 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     fetchData();
   }, []);
 
-  // ルーティンを5AMに自動追加
+  // ルーティンを自動追加（毎回チェック）
   useEffect(() => {
     const addRoutinesToday = async () => {
       try {
-        // 5AM～5:59の間のみ実行
-        const now = new Date();
-        const hour = now.getHours();
-        if (hour !== 5) {
-          console.log("Not 5 AM hour, skipping routine auto-add");
-          return;
-        }
-
         // 本日既に実行済みかチェック
         const lastRunDate = localStorage.getItem("v2_routines_auto_add_date");
         if (lastRunDate === TODAY) {
@@ -1527,6 +1519,50 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
                       </div>
                     </div>
                   )}
+                </div>
+                  ))}
+                </>
+              )}
+
+              {/* 日付未設定のTODO */}
+              {allTodosSorted.filter(t => !t.scheduled_date).length > 0 && (
+                <>
+                  <div className="text-gray-500 text-xs font-semibold mt-4 mb-2">❓ 日付未設定のTODO</div>
+                  {allTodosSorted.filter(t => !t.scheduled_date).map((todo) => (
+                <div key={todo.id} className="bg-gray-900 border border-gray-700 rounded-xl p-3">
+                  <div className="flex items-start gap-2">
+                    {/* 内容 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-2 mb-1">
+                        <span className="text-lg shrink-0">{CATEGORY_EMOJI[todo.category] ?? "📌"}</span>
+                        <p className="text-sm font-medium text-gray-300 break-words flex-1">{todo.title}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className={`px-1.5 py-0.5 rounded border ${CATEGORY_COLOR[todo.category] ?? CATEGORY_COLOR.personal}`}>
+                          {CATEGORY_LABEL[todo.category]}
+                        </span>
+                        {todo.estimated_minutes && <span className="text-gray-500">⏱ {todo.estimated_minutes}分</span>}
+                      </div>
+                    </div>
+
+                    {/* アクション */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleEdit(todo)}
+                        className="text-gray-700 hover:text-blue-400 text-sm transition-colors"
+                        title="編集"
+                      >
+                        📝
+                      </button>
+                      <button
+                        onClick={() => handleDelete(todo.id)}
+                        className="text-gray-700 hover:text-red-500 text-sm transition-colors"
+                        title="削除"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
                 </div>
                   ))}
                 </>
