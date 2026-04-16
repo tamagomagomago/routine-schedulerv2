@@ -132,8 +132,25 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    if (initialTodo) setSelectedTodo(initialTodo);
+    if (initialTodo) {
+      setSelectedTodo(initialTodo);
+      // selectedTodo の見積もり時間をデフォルト値として設定
+      if (initialTodo.estimated_minutes) {
+        setPlannedMinutes(initialTodo.estimated_minutes);
+      }
+    }
   }, [initialTodo]);
+
+  // selectedTodo が変わったときに見積もり時間とカテゴリを更新
+  useEffect(() => {
+    if (selectedTodo) {
+      if (selectedTodo.estimated_minutes) {
+        setPlannedMinutes(selectedTodo.estimated_minutes);
+      }
+      // selectedTodo のカテゴリを初期値として設定
+      setCustomCategory(selectedTodo.category);
+    }
+  }, [selectedTodo]);
 
   // タイマー処理
   useEffect(() => {
@@ -175,7 +192,7 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
       await Notification.requestPermission();
     }
 
-    const category = selectedTodo?.category ?? customCategory;
+    const category = customCategory;
     const title = (selectedTodo?.title ?? customTitle) || "集中作業";
 
     const res = await fetch("/api/v2/focus", {
@@ -280,6 +297,19 @@ export default function FocusTab({ initialTodo }: FocusTabProps) {
                 className="bg-gray-800 text-white border border-gray-700 rounded-xl px-2 py-2 text-sm"
               >
                 {["video", "english", "investment", "ai", "personal"].map((c) => (
+                  <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {selectedTodo && (
+            <div className="flex gap-2">
+              <select
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+                className="flex-1 bg-gray-800 text-white border border-gray-700 rounded-xl px-3 py-2 text-sm"
+              >
+                {["video", "english", "investment", "ai", "personal", "fitness", "engineer", "life_design"].map((c) => (
                   <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>
                 ))}
               </select>
