@@ -617,24 +617,33 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   const handleSaveEdit = async () => {
     if (!editingTodoId || !editForm) return;
-    const res = await fetch(`/api/v2/todos/${editingTodoId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: editForm.title,
-        category: editForm.category,
-        priority: editForm.priority,
-        estimated_minutes: editForm.estimated_minutes,
-        scheduled_start: editForm.scheduled_start || null,
-        description: editForm.description || null,
-        vision: editForm.vision || null,
-        goal_id: editForm.goal_id || null,
-      }),
-    });
-    if (res.ok) {
-      setEditingTodoId(null);
-      setEditForm(null);
-      fetchData();
+    try {
+      const res = await fetch(`/api/v2/todos/${editingTodoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editForm.title,
+          category: editForm.category,
+          priority: editForm.priority,
+          estimated_minutes: editForm.estimated_minutes ?? 0,
+          scheduled_start: editForm.scheduled_start || null,
+          description: editForm.description || null,
+          vision: editForm.vision || null,
+          goal_id: editForm.goal_id || null,
+        }),
+      });
+      if (res.ok) {
+        setEditingTodoId(null);
+        setEditForm(null);
+        fetchData();
+      } else {
+        const error = await res.json();
+        console.error("Save error:", error);
+        alert(`保存に失敗しました: ${error.error || res.statusText}`);
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+      alert(`保存に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`);
     }
   };
 
