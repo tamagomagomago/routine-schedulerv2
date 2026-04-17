@@ -183,8 +183,8 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
       if (allRes.ok) {
         const data = await allRes.json();
-        // TODOリストは「今日の日付が設定されていない」もものみ（goal_idは関係なく表示）
-        setAllTodos(Array.isArray(data) ? data.filter((t: TodoV2) => !t.scheduled_date || t.scheduled_date !== TODAY) : []);
+        // TODOリストは「今日か日付が設定されていない」ものを表示（goal_idは関係なく表示）
+        setAllTodos(Array.isArray(data) ? data.filter((t: TodoV2) => !t.scheduled_date || t.scheduled_date === TODAY) : []);
       } else {
         console.error("allRes not ok:", allRes.status, allRes.statusText);
         setAllTodos([]);

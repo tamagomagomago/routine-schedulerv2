@@ -16,11 +16,12 @@ interface PDCAForm {
   learnings: string[];
   current_state: string;
   next_week_adjustments: string[];
+  selected_categories?: string[];
 }
 
 const BAR_COLORS: Record<string, string> = {
-  fitness: "#fb923c",
   engineer: "#2dd4bf",
+  fitness: "#fb923c",
   video: "#f97316",
   english: "#60a5fa",
   investment: "#4ade80",
@@ -29,16 +30,18 @@ const BAR_COLORS: Record<string, string> = {
   life_design: "#ec4899",
 };
 
-const ALL_CATEGORIES = ["video", "english", "investment", "ai", "personal", "life_design", "fitness", "engineer", "vfx"];
+const ALL_CATEGORIES = ["engineer", "fitness", "video", "english"];
 
 export default function StatsTab() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [reviews, setReviews] = useState<WeeklyReviewV2[]>([]);
+  const DEFAULT_CATEGORIES = ["engineer", "fitness", "video", "english"];
   const [reviewForm, setReviewForm] = useState<PDCAForm>({
-    plan_achievements: ALL_CATEGORIES.map(cat => ({ category: cat, rate: 0, reason: "" })),
+    plan_achievements: DEFAULT_CATEGORIES.map(cat => ({ category: cat, rate: 0, reason: "" })),
     learnings: [""],
     current_state: "",
     next_week_adjustments: [""],
+    selected_categories: DEFAULT_CATEGORIES,
   });
   const [saving, setSaving] = useState(false);
   const [showPDCAModal, setShowPDCAModal] = useState(false);
@@ -302,14 +305,47 @@ export default function StatsTab() {
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-6">
           {/* Plan 達成度 */}
           <div>
-            <h4 className="text-cyan-400 text-xs font-semibold mb-3">📊 Plan 達成度（各カテゴリ）</h4>
+            <h4 className="text-cyan-400 text-xs font-semibold mb-3">📊 Plan 達成度（確認対象カテゴリ）</h4>
+            {/* カテゴリ選択 */}
+            <div className="mb-4 p-3 bg-gray-800 rounded space-y-2">
+              <p className="text-xs text-gray-400 mb-2">レビュー対象にするカテゴリを選択：</p>
+              <div className="grid grid-cols-2 gap-2">
+                {["engineer", "fitness", "video", "english", "investment", "ai", "personal", "life_design"].map(cat => (
+                  <label key={cat} className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={reviewForm.selected_categories?.includes(cat) ?? DEFAULT_CATEGORIES.includes(cat)}
+                      onChange={(e) => {
+                        const selected = reviewForm.selected_categories ?? DEFAULT_CATEGORIES;
+                        const updated = e.target.checked
+                          ? [...selected, cat].filter(c => !selected.includes(c) || e.target.checked)
+                          : selected.filter(c => c !== cat);
+                        const newAchievements = updated.map(c => {
+                          const existing = reviewForm.plan_achievements.find(a => a.category === c);
+                          return existing || { category: c, rate: 0, reason: "" };
+                        });
+                        setReviewForm({
+                          ...reviewForm,
+                          selected_categories: updated,
+                          plan_achievements: newAchievements,
+                        });
+                      }}
+                      className="w-4 h-4 rounded"
+                    />
+                    {CATEGORY_EMOJI[cat]} {CATEGORY_LABEL[cat]}
+                  </label>
+                ))}
+              </div>
+            </div>
+            {/* 達成度入力 */}
             <div className="space-y-4">
               {reviewForm.plan_achievements.map((item, idx) => {
                 const emoji = CATEGORY_EMOJI[item.category] ?? "📌";
+                const label = CATEGORY_LABEL[item.category] ?? item.category;
                 return (
                   <div key={item.category} className="space-y-2 pb-3 border-b border-gray-700 last:border-b-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-300">{emoji} {item.category}</span>
+                      <span className="text-sm text-gray-300">{emoji} {label}</span>
                       <span className="text-sm font-bold text-cyan-400">{item.rate}%</span>
                     </div>
                     <input
@@ -487,12 +523,15 @@ export default function StatsTab() {
                       <div className="ml-2 mt-1 space-y-1">
                         {r.plan_achievements
                           .filter((a) => a.rate > 0)
-                          .map((a) => (
+                          .map((a) => {
+                            const label = CATEGORY_LABEL[a.category] ?? a.category;
+                            return (
                             <div key={a.category}>
-                              {CATEGORY_EMOJI[a.category]} {a.category}: {a.rate}%
+                              {CATEGORY_EMOJI[a.category]} {label}: {a.rate}%
                               {a.reason && <span className="text-gray-600"> ({a.reason})</span>}
                             </div>
-                          ))}
+                          );
+                          })}
                       </div>
                     </div>
                   )}
@@ -558,10 +597,11 @@ function PDCAModal({ form, setForm, onSave, saving, onClose }: PDCAModalProps) {
           <div className="space-y-3 bg-gray-800 rounded p-3">
             {form.plan_achievements.map((item, idx) => {
               const emoji = CATEGORY_EMOJI[item.category] ?? "📌";
+              const label = CATEGORY_LABEL[item.category] ?? item.category;
               return (
                 <div key={item.category} className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-300">{emoji} {item.category}</span>
+                    <span className="text-xs text-gray-300">{emoji} {label}</span>
                     <span className="text-xs font-bold text-cyan-400">{item.rate}%</span>
                   </div>
                   <input

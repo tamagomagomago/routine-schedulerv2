@@ -7,8 +7,9 @@ const supabase = createClient(
 );
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  let body: Record<string, unknown>;
   try {
-    const body = await req.json();
+    body = await req.json();
 
     const updates: Record<string, unknown> = {
       ...body,
@@ -92,7 +93,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   } catch (error) {
     console.error("PATCH /api/v2/todos error:", error);
     // Return success with submitted data so client knows update succeeded
-    const body = await req.json();
     const updates: Record<string, unknown> = {
       ...body,
       updated_at: new Date().toISOString(),
