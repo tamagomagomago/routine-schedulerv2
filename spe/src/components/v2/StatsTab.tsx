@@ -318,7 +318,7 @@ export default function StatsTab() {
                       onChange={(e) => {
                         const selected = reviewForm.selected_categories ?? DEFAULT_CATEGORIES;
                         const updated = e.target.checked
-                          ? [...selected, cat].filter(c => !selected.includes(c) || e.target.checked)
+                          ? selected.includes(cat) ? selected : [...selected, cat]
                           : selected.filter(c => c !== cat);
                         const newAchievements = updated.map(c => {
                           const existing = reviewForm.plan_achievements.find(a => a.category === c);
