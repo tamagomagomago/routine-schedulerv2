@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { WeeklyReviewV2, CATEGORY_EMOJI } from "@/types/v2";
+import { WeeklyReviewV2, CATEGORY_EMOJI, CATEGORY_LABEL } from "@/types/v2";
 
 interface StatsData {
   focusByCategory: Record<string, number>;
