@@ -82,6 +82,7 @@ export default function StatsTab() {
           learnings: existing.learnings ?? [""],
           current_state: existing.current_state ?? "",
           next_week_adjustments: existing.next_week_adjustments ?? [""],
+          selected_categories: existing.plan_achievements?.map(a => a.category) ?? DEFAULT_CATEGORIES,
         });
       }
     });
@@ -302,7 +303,23 @@ export default function StatsTab() {
       {/* 週次 PDCA レビュー */}
       <section>
         <h3 className="text-yellow-400 text-sm font-semibold mb-3">📝 今週の PDCA レビュー</h3>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-6">
+        {(() => {
+          const today = new Date();
+          const isSunday = today.getDay() === 0;
+          const isReviewComplete = reviewForm.next_week_adjustments?.some(a => a.trim()) ?? false;
+          const shouldEmphasize = isSunday && !isReviewComplete;
+
+          return (
+            <div className={`rounded-xl p-4 space-y-6 transition-colors ${
+              shouldEmphasize
+                ? "bg-cyan-950/40 border-4 border-cyan-400 shadow-lg shadow-cyan-500/20"
+                : "bg-gray-900 border border-gray-800"
+            }`}>
+              {shouldEmphasize && (
+                <div className="text-center py-2 bg-cyan-500/20 border border-cyan-400/50 rounded-lg mb-2">
+                  <p className="text-cyan-300 text-sm font-semibold">⭐ 日曜日です！週間レビューを入力しましょう</p>
+                </div>
+              )}
           {/* Plan 達成度 */}
           <div>
             <h4 className="text-cyan-400 text-xs font-semibold mb-3">📊 Plan 達成度（確認対象カテゴリ）</h4>
@@ -492,7 +509,9 @@ export default function StatsTab() {
           >
             {saving ? "保存中..." : "PDCA レビューを保存"}
           </button>
-        </div>
+            </div>
+            );
+        })()}
       </section>
 
       {/* 過去のレビュー履歴 */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TodayTab from "@/components/v2/TodayTab";
 import GoalsTab from "@/components/v2/GoalsTab";
 import FocusTab from "@/components/v2/FocusTab";
@@ -21,6 +21,33 @@ const TABS: { id: Tab; label: string; emoji: string; color: string; activeColor:
 export default function V2Page() {
   const [currentTab, setCurrentTab] = useState<Tab>("today");
   const [focusTodo, setFocusTodo] = useState<TodoV2 | null>(null);
+
+  // Auto-navigate to Stats on Sunday if weekly review is not complete
+  useEffect(() => {
+    const checkAndNavigate = async () => {
+      try {
+        const today = new Date();
+        const isSunday = today.getDay() === 0;
+
+        if (isSunday) {
+          const res = await fetch("/api/v2/reviews?limit=1");
+          if (res.ok) {
+            const reviews = await res.json();
+            const latestReview = reviews[0];
+            const isReviewComplete = latestReview?.next_week_adjustments?.length > 0;
+
+            if (!isReviewComplete) {
+              setCurrentTab("stats");
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to check weekly review:", err);
+      }
+    };
+
+    checkAndNavigate();
+  }, []);
 
   const handleStartFocus = (todo: TodoV2) => {
     setFocusTodo(todo);
@@ -51,7 +78,7 @@ export default function V2Page() {
       {/* メインコンテンツ */}
       <main className="flex-1 max-w-lg mx-auto w-full overflow-y-auto">
         {currentTab === "today" && (
-          <TodayTab onStartFocus={handleStartFocus} />
+          <TodayTab onStartFocus={handleStartFocus} onNavigateToStats={() => setCurrentTab("stats")} />
         )}
         {currentTab === "goals" && (
           <GoalsTab />

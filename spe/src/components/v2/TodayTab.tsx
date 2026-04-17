@@ -77,9 +77,10 @@ function formatDisplayTime(time: string): string {
 
 interface TodayTabProps {
   onStartFocus: (todo: TodoV2) => void;
+  onNavigateToStats?: () => void;
 }
 
-export default function TodayTab({ onStartFocus }: TodayTabProps) {
+export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabProps) {
   const [activeTab, setActiveTab] = useState<"list" | "today">("today");
   const [allTodos, setAllTodos] = useState<TodoV2[]>([]);
   const [todayTodos, setTodayTodos] = useState<TodoV2[]>([]);
@@ -170,21 +171,34 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
     }
     return true;
   });
+  const [weeklyReview, setWeeklyReview] = useState<any>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [allRes, todayRes, goalsRes, visionRes, concernsRes] = await Promise.all([
-        fetch("/api/v2/todos?includeGoalTodos=true").catch(e => { console.error("Fetch error for allTodos:", e); return { ok: false }; }),
-        fetch(`/api/v2/todos?date=${TODAY}&includeGoalTodos=true`).catch(e => { console.error("Fetch error for todayTodos:", e); return { ok: false }; }),
-        fetch("/api/v2/goals").catch(e => { console.error("Fetch error for goals:", e); return { ok: false }; }),
-        fetch("/api/v2/weekly-visions").catch(e => { console.error("Fetch error for vision:", e); return { ok: false }; }),
-        fetch(`/api/v2/daily-concerns?date=${TODAY}`).catch(e => { console.error("Fetch error for concerns:", e); return { ok: false }; }),
+      const fetchWithFallback = async (url: string, label: string) => {
+        try {
+          const res = await fetch(url);
+          return res;
+        } catch (e) {
+          console.error(`Fetch error for ${label}:`, e);
+          return new Response(JSON.stringify({ error: true }), { status: 500, ok: false });
+        }
+      };
+
+      const [allRes, todayRes, goalsRes, visionRes, concernsRes, reviewRes] = await Promise.all([
+        fetchWithFallback("/api/v2/todos?includeGoalTodos=false", "allTodos"),
+        fetchWithFallback(`/api/v2/todos?date=${TODAY}&includeGoalTodos=false`, "todayTodos"),
+        fetchWithFallback("/api/v2/goals", "goals"),
+        fetchWithFallback("/api/v2/weekly-visions", "vision"),
+        fetchWithFallback(`/api/v2/daily-concerns?date=${TODAY}`, "concerns"),
+        fetchWithFallback("/api/v2/reviews?limit=1", "weeklyReview"),
       ]);
 
       if (allRes.ok) {
         const data = await allRes.json();
-        // TODOリストは「今日か日付が設定されていない」ものを表示（goal_idは関係なく表示）
-        setAllTodos(Array.isArray(data) ? data.filter((t: TodoV2) => !t.scheduled_date || t.scheduled_date === TODAY) : []);
+        // TODOリストは全マスターTODOを表示（goal_id: null のみ、日付は関係なく表示）
+        const filteredTodos = Array.isArray(data) ? data : [];
+        setAllTodos(filteredTodos);
       } else {
         console.error("allRes not ok:", allRes.status, allRes.statusText);
         setAllTodos([]);
@@ -195,8 +209,10 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         setTodayTodos(Array.isArray(data) ? data : []);
       } else {
         console.error("todayRes not ok:", todayRes.status, todayRes.statusText);
-        const errorData = await todayRes.json().catch(() => ({}));
-        console.error("todayRes error details:", errorData);
+        if (todayRes instanceof Response) {
+          const errorData = await todayRes.json().catch(() => ({}));
+          console.error("todayRes error details:", errorData);
+        }
         setTodayTodos([]);
       }
 
@@ -237,6 +253,15 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         }
       } else {
         console.error("concernsRes not ok:", concernsRes.status, concernsRes.statusText);
+      }
+
+      if (reviewRes.ok) {
+        const data = await reviewRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setWeeklyReview(data[0]);
+        }
+      } else {
+        console.error("reviewRes not ok:", reviewRes.status, reviewRes.statusText);
       }
     } catch (error) {
       console.error("Error in fetchData:", error);
@@ -732,61 +757,31 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
 
   return (
     <div className="pb-24">
-      {/* Vision Modal */}
-      {showVisionModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-amber-600 rounded-2xl max-w-md w-full shadow-2xl">
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-amber-300 mb-2">✨ 今週のTODO達成後の自分を設定</h3>
-              <p className="text-sm text-gray-400 mb-4">月曜日時点の自分と、日曜日になりたい自分を書いてください</p>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs text-amber-300 font-semibold block mb-1">📍 月曜日時点の自分（現在地）</label>
-                  <textarea
-                    autoFocus
-                    placeholder="例：動画編集の概要を知らない、動画生成からインスタ投稿までに何をしたらいいかわからない"
-                    value={visionModalText.split("---")[0] || ""}
-                    onChange={(e) => {
-                      const sunday = visionModalText.split("---")[1] || "";
-                      setVisionModalText(e.target.value + (sunday ? "---" + sunday : ""));
-                    }}
-                    className="w-full bg-gray-800 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-600 resize-none"
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-amber-300 font-semibold block mb-1">🎯 日曜日になりたい自分（目標）</label>
-                  <textarea
-                    placeholder="例：動画編集の大枠を理解、Nano BananaやVeo3で動画生成しDaVinci Resolveで編集してインスタ投稿"
-                    value={visionModalText.split("---")[1] || ""}
-                    onChange={(e) => {
-                      const monday = visionModalText.split("---")[0] || "";
-                      setVisionModalText(monday + "---" + e.target.value);
-                    }}
-                    className="w-full bg-gray-800 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-600 resize-none"
-                    rows={3}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={handleVisionCancel}
-                  className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition-colors"
-                >
-                  後で設定
-                </button>
-                <button
-                  onClick={() => handleVisionConfirm(visionModalText)}
-                  disabled={!visionModalText.trim()}
-                  className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  設定
-                </button>
+      {/* Sunday Weekly Review Warning Banner */}
+      {(() => {
+        const today = new Date();
+        const isSunday = today.getDay() === 0;
+        const isReviewComplete = weeklyReview?.next_week_adjustments?.some((a: string) => a.trim()) ?? false;
+
+        if (isSunday && !isReviewComplete) {
+          return (
+            <div className="mx-4 mt-4 bg-cyan-950/40 border-2 border-cyan-400 rounded-lg p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-cyan-300 text-sm font-semibold">📅 日曜日です。Stats タブで週間レビューを入力してください</p>
+                {onNavigateToStats && (
+                  <button
+                    onClick={onNavigateToStats}
+                    className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors"
+                  >
+                    Stats へ
+                  </button>
+                )}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        }
+        return null;
+      })()}
 
       {/* ヘッダー */}
       <div className="px-4 pt-4 pb-3">
@@ -966,113 +961,20 @@ export default function TodayTab({ onStartFocus }: TodayTabProps) {
         )}
       </div>
 
-      {/* 今週のTODO達成後の自分 */}
-      <div className={`mx-4 mb-4 rounded-xl overflow-hidden transition-all ${
-        (weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed
-          ? "bg-gradient-to-br from-amber-800 to-amber-950 border-2 border-amber-500 ring-2 ring-amber-400/50 shadow-lg shadow-amber-600/30"
-          : (weeklyVisionMonday === "" && weeklyVisionSunday === "")
-          ? "bg-gradient-to-br from-amber-900/60 to-amber-950/60 border-2 border-amber-600/70 ring-2 ring-amber-500/30"
-          : "bg-gradient-to-br from-amber-900/40 to-amber-950/40 border border-amber-700/50"
-      }`}>
-        <button
-          onClick={() => {
-            if ((weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed) {
-              openVisionModal();
-            } else {
-              toggleTodayVisionSection(!showTodayVisionSection);
-            }
-          }}
-          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-amber-900/20 transition-colors"
-        >
-          <div className="flex items-center gap-2 flex-1">
-            <label className={`text-xs font-bold cursor-pointer ${
-              (weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed
-                ? "text-amber-100 text-sm"
-                : (weeklyVisionMonday === "" && weeklyVisionSunday === "")
-                ? "text-amber-300"
-                : "text-amber-400"
-            }`}>
-              ✨ 今週のTODO達成後の自分
-            </label>
-            {(weeklyVisionMonday === "" && weeklyVisionSunday === "") && !todayVisionConfirmed && (
-              <span className="text-amber-100 animate-pulse text-xs">●</span>
-            )}
-          </div>
-          <div className={`w-8 h-4 rounded-full transition-colors relative ${showTodayVisionSection ? "bg-amber-600" : "bg-gray-700"}`}>
-            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showTodayVisionSection ? "translate-x-4" : "translate-x-0.5"}`} />
-          </div>
-        </button>
-        {showTodayVisionSection && (
-        <div className="px-4 pb-3 border-t border-amber-700/50 pt-3 space-y-3">
-          <div>
-            <label className="text-xs text-amber-300 font-semibold block mb-2">📍 月曜日時点の自分（現在地）</label>
-            <textarea
-              placeholder="例：動画編集の概要を知らない、動画生成からインスタ投稿までに何をしたらいいかわからない"
-              value={weeklyVisionMonday}
-              onChange={(e) => {
-                setWeeklyVisionMonday(e.target.value);
-                localStorage.setItem("v2_weekly_vision_monday", e.target.value);
-                if (todayVisionConfirmed) {
-                  setTodayVisionConfirmed(false);
-                  localStorage.setItem("v2_weekly_vision_confirmed", "false");
-                }
-              }}
-              className="w-full bg-amber-900/30 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500 resize-none"
-              rows={4}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-amber-300 font-semibold block mb-2">🎯 日曜日になりたい自分（目標）</label>
-            <textarea
-              placeholder="例：動画編集の大枠を理解、Nano BananaやVeo3で動画生成しDaVinci Resolveで編集してインスタ投稿"
-              value={weeklyVisionSunday}
-              onChange={(e) => {
-                setWeeklyVisionSunday(e.target.value);
-                localStorage.setItem("v2_weekly_vision_sunday", e.target.value);
-                if (todayVisionConfirmed) {
-                  setTodayVisionConfirmed(false);
-                  localStorage.setItem("v2_weekly_vision_confirmed", "false");
-                }
-              }}
-              className="w-full bg-amber-900/30 border border-amber-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500 resize-none"
-              rows={4}
-            />
-          </div>
-          {(weeklyVisionMonday || weeklyVisionSunday) && (
-            <div className="mt-3 flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleTodayVisionAchieved}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    todayVisionAchieved
-                      ? "bg-green-700/50 text-green-400 border border-green-600"
-                      : "bg-gray-700/50 text-gray-400 border border-gray-600 hover:bg-gray-700/70"
-                  }`}
-                >
-                  <span className={`w-4 h-4 border rounded flex items-center justify-center transition-colors ${
-                    todayVisionAchieved ? "bg-green-600 border-green-600" : "border-gray-500"
-                  }`}>
-                    {todayVisionAchieved && <span className="text-white text-xs">✓</span>}
-                  </span>
-                  {todayVisionAchieved ? "達成した" : "達成状態を切り替え"}
-                </button>
-                {todayVisionAchieved && (
-                  <span className="text-xs text-green-400">🎉 完璧だ！</span>
-                )}
-              </div>
-              {!todayVisionConfirmed && (weeklyVisionMonday || weeklyVisionSunday) && (
-                <button
-                  onClick={() => handleCompleteVisionEdit()}
-                  className="w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-medium transition-colors"
-                >
-                  設定完了
-                </button>
-              )}
-            </div>
-          )}
+      {/* 週間レビューから今週のやることを表示 */}
+      {weeklyReview && weeklyReview.next_week_adjustments && weeklyReview.next_week_adjustments.length > 0 && (
+        <div className="mx-4 mb-4 bg-cyan-900/30 border border-cyan-700/50 rounded-xl p-4">
+          <h3 className="text-cyan-400 text-xs font-semibold mb-2">📋 今週のやることリスト（前週のレビューから）</h3>
+          <ul className="space-y-1.5">
+            {weeklyReview.next_week_adjustments.map((item: string, idx: number) => (
+              <li key={idx} className="text-xs text-cyan-200 flex items-start gap-2">
+                <span className="text-cyan-400 shrink-0 font-bold">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-        )}
-      </div>
+      )}
 
       {/* タブ切り替え（今週の目標の下） */}
       <div className="px-4 mb-4 flex gap-2">
