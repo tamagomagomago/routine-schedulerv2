@@ -113,7 +113,7 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
   const [loading, setLoading] = useState(false);
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<TodoV2> | null>(null);
-  const [editingField, setEditingField] = useState<"title" | "time" | "todayTitle" | "todayTime" | null>(null);
+  const [editingField, setEditingField] = useState<"title" | "time" | "todayTitle" | "todayTime" | "estimatedMinutes" | "listEstimatedMinutes" | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [editingPriorityId, setEditingPriorityId] = useState<number | null>(null);
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
@@ -600,17 +600,22 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
     setEditForm(todo);
   };
 
-  const handleInlineEditStart = (field: "title" | "time" | "todayTitle" | "todayTime", todoId: number) => {
+  const handleInlineEditStart = (field: "title" | "time" | "todayTitle" | "todayTime" | "estimatedMinutes" | "listEstimatedMinutes", todoId: number) => {
     setEditingField(field);
     setEditingTodoId(todoId);
   };
 
-  const handleInlineEditSave = async (id: number, field: "title" | "time" | "todayTitle" | "todayTime", value: string) => {
+  const handleInlineEditSave = async (id: number, field: "title" | "time" | "todayTitle" | "todayTime" | "estimatedMinutes" | "listEstimatedMinutes", value: string) => {
     const updates: any = {};
     if (field === "title" || field === "todayTitle") {
       updates.title = value;
     } else if (field === "time" || field === "todayTime") {
       updates.scheduled_start = value || null;
+    } else if (field === "estimatedMinutes" || field === "listEstimatedMinutes") {
+      const minutes = parseInt(value, 10);
+      if (!isNaN(minutes) && minutes > 0) {
+        updates.estimated_minutes = minutes;
+      }
     }
 
     const res = await fetch(`/api/v2/todos/${id}`, {
@@ -1064,7 +1069,15 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                 <>
                   <div className="text-amber-400 text-xs font-semibold mt-4 mb-2">📅 今週のTODO</div>
                   {allTodosSorted.filter(t => t.scheduled_date && t.scheduled_date >= getThisWeekRange().start && t.scheduled_date <= getThisWeekRange().end).map((todo) => (
-                <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                <div
+                  key={todo.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", todo.id.toString());
+                  }}
+                  className="bg-gray-900 border border-gray-800 rounded-xl p-3 cursor-move hover:border-blue-600 transition-colors"
+                >
                   <div className="flex items-start gap-2">
                     {/* 内容 */}
                     <div className="flex-1 min-w-0">
@@ -1135,12 +1148,50 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                             className="px-1.5 py-0.5 rounded border border-blue-600 bg-gray-700 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         ) : (
-                          <span
-                            onClick={() => handleInlineEditStart("time", todo.id)}
-                            className="text-gray-600 cursor-pointer hover:text-blue-400 transition-colors"
-                          >
-                            ⏱ {todo.estimated_minutes}分{todo.scheduled_start && ` (${todo.scheduled_start})`}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {editingField === "listEstimatedMinutes" && editingTodoId === todo.id ? (
+                              <input
+                                autoFocus
+                                type="number"
+                                min="1"
+                                defaultValue={todo.estimated_minutes}
+                                onBlur={(e) => {
+                                  if (editingField === "listEstimatedMinutes" && editingTodoId === todo.id) {
+                                    handleInlineEditSave(todo.id, "listEstimatedMinutes", e.currentTarget.value);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                    e.preventDefault();
+                                    handleInlineEditSave(todo.id, "listEstimatedMinutes", e.currentTarget.value);
+                                    setEditingField(null);
+                                    setEditingTodoId(null);
+                                  }
+                                  if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    setEditingField(null);
+                                    setEditingTodoId(null);
+                                  }
+                                }}
+                                className="px-1.5 py-0.5 rounded border border-blue-600 bg-gray-700 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 w-12"
+                              />
+                            ) : (
+                              <span
+                                onClick={() => handleInlineEditStart("listEstimatedMinutes", todo.id)}
+                                className="text-gray-600 cursor-pointer hover:text-blue-400 transition-colors"
+                              >
+                                ⏱ {todo.estimated_minutes}分
+                              </span>
+                            )}
+                            {todo.scheduled_start && (
+                              <span
+                                onClick={() => handleInlineEditStart("time", todo.id)}
+                                className="text-gray-600 cursor-pointer hover:text-blue-400 transition-colors"
+                              >
+                                ({todo.scheduled_start})
+                              </span>
+                            )}
+                          </div>
                         )}
                         {todo.goal_id && weeklyGoals.find(g => g.id === todo.goal_id) && (
                           <span className="px-1.5 py-0.5 rounded border border-purple-700 text-purple-400 bg-purple-950/40">
@@ -1323,7 +1374,15 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                 <>
                   <div className="text-gray-400 text-xs font-semibold mt-4 mb-2">📅 来週以降のTODO</div>
                   {allTodosSorted.filter(t => t.scheduled_date && t.scheduled_date > getThisWeekRange().end).map((todo) => (
-                <div key={todo.id} className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                <div
+                  key={todo.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", todo.id.toString());
+                  }}
+                  className="bg-gray-900 border border-gray-800 rounded-xl p-3 cursor-move hover:border-blue-600 transition-colors"
+                >
                   <div className="flex items-start gap-2">
                     {/* 内容 */}
                     <div className="flex-1 min-w-0">
@@ -1482,7 +1541,15 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                 <>
                   <div className="text-gray-500 text-xs font-semibold mt-4 mb-2">❓ 日付未設定のTODO</div>
                   {allTodosSorted.filter(t => !t.scheduled_date).map((todo) => (
-                <div key={todo.id} className="bg-gray-900 border border-gray-700 rounded-xl p-3">
+                <div
+                  key={todo.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", todo.id.toString());
+                  }}
+                  className="bg-gray-900 border border-gray-700 rounded-xl p-3 cursor-move hover:border-blue-600 transition-colors"
+                >
                   <div className="flex items-start gap-2">
                     {/* 内容 */}
                     <div className="flex-1 min-w-0">
@@ -1675,7 +1742,20 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
 
       {/* 今日のTODO */}
       {activeTab === "today" && (
-        <div className="px-4 space-y-3">
+        <div
+          className="px-4 space-y-3"
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const todoId = parseInt(e.dataTransfer.getData("text/plain"), 10);
+            if (!isNaN(todoId)) {
+              handleAddToToday(todoId);
+            }
+          }}
+        >
           {/* MIT バッジ */}
           {todayMit && (
             <div className="border-2 border-red-600 rounded-xl p-3 bg-red-950/40">
@@ -2013,7 +2093,40 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                           <span className={`px-1.5 py-0.5 rounded border ${PRIORITY_COLOR[todo.priority] ?? PRIORITY_COLOR[3]}`}>
                             {PRIORITY_LABEL[todo.priority] ?? "中"}
                           </span>
-                          <span className="text-gray-600">⏱ {todo.estimated_minutes}分</span>
+                          {editingField === "estimatedMinutes" && editingTodoId === todo.id ? (
+                            <input
+                              autoFocus
+                              type="number"
+                              min="1"
+                              defaultValue={todo.estimated_minutes}
+                              onBlur={(e) => {
+                                if (editingField === "estimatedMinutes" && editingTodoId === todo.id) {
+                                  handleInlineEditSave(todo.id, "estimatedMinutes", e.currentTarget.value);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                  e.preventDefault();
+                                  handleInlineEditSave(todo.id, "estimatedMinutes", e.currentTarget.value);
+                                  setEditingField(null);
+                                  setEditingTodoId(null);
+                                }
+                                if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  setEditingField(null);
+                                  setEditingTodoId(null);
+                                }
+                              }}
+                              className="px-1.5 py-0.5 rounded border border-blue-600 bg-gray-700 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 w-12"
+                            />
+                          ) : (
+                            <span
+                              onClick={() => handleInlineEditStart("estimatedMinutes", todo.id)}
+                              className="text-gray-600 cursor-pointer hover:text-blue-400 transition-colors"
+                            >
+                              ⏱ {todo.estimated_minutes}分
+                            </span>
+                          )}
                           {todo.goal_id && weeklyGoals.find(g => g.id === todo.goal_id) && (
                             <span className="px-1.5 py-0.5 rounded border border-purple-700 text-purple-400 bg-purple-950/40">
                               🎯 {weeklyGoals.find(g => g.id === todo.goal_id)?.title.slice(0, 12)}
