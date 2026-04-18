@@ -44,25 +44,9 @@ export default function StatsTab() {
     selected_categories: DEFAULT_CATEGORIES,
   });
   const [saving, setSaving] = useState(false);
-  const [showPDCAModal, setShowPDCAModal] = useState(false);
 
   useEffect(() => {
     fetchData();
-
-    // 日曜日で今週のレビューがなければモーダル表示
-    const today = new Date();
-    if (today.getDay() === 0) {
-      const thisWeek = getThisWeekMonday();
-      fetch("/api/v2/reviews?limit=8")
-        .then((r) => r.json())
-        .catch(() => [])
-        .then((reviewList: WeeklyReviewV2[]) => {
-          const existing = reviewList.find((rv) => rv.week_start === thisWeek);
-          if (!existing) {
-            setShowPDCAModal(true);
-          }
-        });
-    }
   }, []);
 
   const fetchData = async () => {
@@ -103,7 +87,6 @@ export default function StatsTab() {
         }),
       });
       await fetchData();
-      setShowPDCAModal(false);
     } finally {
       setSaving(false);
     }
@@ -287,17 +270,6 @@ export default function StatsTab() {
             </LineChart>
           </ResponsiveContainer>
         </section>
-      )}
-
-      {/* PDCA レビューモーダル */}
-      {showPDCAModal && (
-        <PDCAModal
-          form={reviewForm}
-          setForm={setReviewForm}
-          onSave={handleSaveReview}
-          saving={saving}
-          onClose={() => setShowPDCAModal(false)}
-        />
       )}
 
       {/* 週次 PDCA レビュー */}
@@ -586,191 +558,6 @@ export default function StatsTab() {
           </div>
         </section>
       )}
-    </div>
-  );
-}
-
-// PDCA モーダルコンポーネント
-interface PDCAModalProps {
-  form: PDCAForm;
-  setForm: (form: PDCAForm) => void;
-  onSave: () => void;
-  saving: boolean;
-  onClose: () => void;
-}
-
-function PDCAModal({ form, setForm, onSave, saving, onClose }: PDCAModalProps) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-yellow-400 text-lg font-bold">📝 今週のPDCAレビュー</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-200 text-xl">
-            ✕
-          </button>
-        </div>
-
-        {/* Plan 達成度 */}
-        <div className="space-y-2">
-          <h3 className="text-cyan-400 text-sm font-semibold">📊 Plan 達成度（各カテゴリ）</h3>
-          <div className="space-y-3 bg-gray-800 rounded p-3">
-            {form.plan_achievements.map((item, idx) => {
-              const emoji = CATEGORY_EMOJI[item.category] ?? "📌";
-              const label = CATEGORY_LABEL[item.category] ?? item.category;
-              return (
-                <div key={item.category} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-300">{emoji} {label}</span>
-                    <span className="text-xs font-bold text-cyan-400">{item.rate}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={item.rate}
-                    onChange={(e) => {
-                      const updated = [...form.plan_achievements];
-                      updated[idx].rate = Number(e.target.value);
-                      setForm({ ...form, plan_achievements: updated });
-                    }}
-                    className="w-full accent-cyan-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="理由"
-                    value={item.reason}
-                    onChange={(e) => {
-                      const updated = [...form.plan_achievements];
-                      updated[idx].reason = e.target.value;
-                      setForm({ ...form, plan_achievements: updated });
-                    }}
-                    className="w-full bg-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 学び */}
-        <div className="space-y-2">
-          <h3 className="text-green-400 text-sm font-semibold">💡 学び</h3>
-          <div className="space-y-2 bg-gray-800 rounded p-3">
-            {form.learnings.map((learning, idx) => (
-              <div key={idx} className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="学び"
-                  value={learning}
-                  onChange={(e) => {
-                    const updated = [...form.learnings];
-                    updated[idx] = e.target.value;
-                    setForm({ ...form, learnings: updated });
-                  }}
-                  className="flex-1 bg-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-500"
-                />
-                {form.learnings.length > 1 && (
-                  <button
-                    onClick={() => {
-                      setForm({
-                        ...form,
-                        learnings: form.learnings.filter((_, i) => i !== idx),
-                      });
-                    }}
-                    className="text-red-400 hover:text-red-300 text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              onClick={() => {
-                setForm({ ...form, learnings: [...form.learnings, ""] });
-              }}
-              className="text-xs text-green-500 hover:text-green-400"
-            >
-              + 追加
-            </button>
-          </div>
-        </div>
-
-        {/* 現在地 → 来週の調整 */}
-        <div className="space-y-2">
-          <h3 className="text-indigo-400 text-sm font-semibold">📍 現在地</h3>
-          <textarea
-            placeholder="現在の状態・課題"
-            value={form.current_state}
-            onChange={(e) => setForm({ ...form, current_state: e.target.value })}
-            rows={2}
-            className="w-full bg-gray-800 text-gray-200 text-xs rounded px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="text-orange-400 text-sm font-semibold">🎯 来週の調整</h3>
-          <div className="space-y-2 bg-gray-800 rounded p-3">
-            {form.next_week_adjustments.map((adj, idx) => (
-              <div key={idx} className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="調整"
-                  value={adj}
-                  onChange={(e) => {
-                    const updated = [...form.next_week_adjustments];
-                    updated[idx] = e.target.value;
-                    setForm({ ...form, next_week_adjustments: updated });
-                  }}
-                  className="flex-1 bg-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                />
-                {form.next_week_adjustments.length > 1 && (
-                  <button
-                    onClick={() => {
-                      setForm({
-                        ...form,
-                        next_week_adjustments: form.next_week_adjustments.filter(
-                          (_, i) => i !== idx
-                        ),
-                      });
-                    }}
-                    className="text-red-400 hover:text-red-300 text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              onClick={() => {
-                setForm({
-                  ...form,
-                  next_week_adjustments: [...form.next_week_adjustments, ""],
-                });
-              }}
-              className="text-xs text-orange-500 hover:text-orange-400"
-            >
-              + 追加
-            </button>
-          </div>
-        </div>
-
-        <div className="flex gap-2 pt-4">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
-          >
-            キャンセル
-          </button>
-          <button
-            onClick={onSave}
-            disabled={saving}
-            className="flex-1 py-2 bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
-          >
-            {saving ? "保存中..." : "保存"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
