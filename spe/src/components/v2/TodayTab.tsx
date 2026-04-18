@@ -314,7 +314,7 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
     fetchData();
   }, []);
 
-  // ルーティンを自動追加（毎回チェック）
+  // ルーティンを自動追加（マウント時のみ実行）
   useEffect(() => {
     const addRoutinesToday = async () => {
       try {
@@ -379,7 +379,7 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
     };
 
     addRoutinesToday();
-  }, [fetchData]);
+  }, []);
 
   // Vision モーダルを初回ロード時に表示
   useEffect(() => {
