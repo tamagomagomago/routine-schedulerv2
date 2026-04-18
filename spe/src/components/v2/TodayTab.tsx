@@ -174,7 +174,8 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
   const [weeklyReview, setWeeklyReview] = useState<any>(null);
 
   // 買うものリスト
-  const [shoppingItems, setShoppingItems] = useState<Array<{ id: string; text: string; done: boolean }>>(() => {
+  const DEFAULT_TAGS = ['本屋', '百均', 'スーパー'];
+  const [shoppingItems, setShoppingItems] = useState<Array<{ id: string; text: string; done: boolean; tags: string[] }>>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("v2_shopping_list");
       return stored ? JSON.parse(stored) : [];
@@ -182,6 +183,7 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
     return [];
   });
   const [shoppingInput, setShoppingInput] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>(['百均']);
 
   const addShoppingItem = () => {
     if (shoppingInput.trim()) {
@@ -189,11 +191,13 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
         id: Date.now().toString(),
         text: shoppingInput,
         done: false,
+        tags: selectedTags.length > 0 ? selectedTags : ['百均'],
       };
       const updated = [...shoppingItems, newItem];
       setShoppingItems(updated);
       localStorage.setItem("v2_shopping_list", JSON.stringify(updated));
       setShoppingInput("");
+      setSelectedTags(['百均']);
     }
   };
 
@@ -690,6 +694,8 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
           description: editForm.description || null,
           vision: editForm.vision || null,
           goal_id: editForm.goal_id || null,
+          is_completed: editForm.is_completed,
+          completed_at: editForm.completed_at || null,
         }),
       });
       if (res.ok) {
@@ -1573,6 +1579,13 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                         title="編集"
                       >
                         📝
+                      </button>
+                      <button
+                        onClick={() => handleAddToToday(todo.id)}
+                        className="text-xs px-2 py-1 rounded border border-blue-700 text-blue-400 hover:bg-blue-900/40 transition-colors"
+                        title="今日に追加"
+                      >
+                        📅 今日へ
                       </button>
                       <button
                         onClick={() => handleDelete(todo.id)}
@@ -2731,26 +2744,49 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
       {/* 買うものリスト */}
       {activeTab === "shopping" && (
         <div className="px-4 space-y-3 pb-24">
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              placeholder="買うものを入力..."
-              value={shoppingInput}
-              onChange={(e) => setShoppingInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  addShoppingItem();
-                }
-              }}
-              className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={addShoppingItem}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              追加
-            </button>
+          <div className="space-y-2 mb-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="買うものを入力..."
+                value={shoppingInput}
+                onChange={(e) => setShoppingInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    addShoppingItem();
+                  }
+                }}
+                className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={addShoppingItem}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                追加
+              </button>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {DEFAULT_TAGS.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => {
+                    setSelectedTags((prev) =>
+                      prev.includes(tag)
+                        ? prev.filter((t) => t !== tag)
+                        : [...prev, tag]
+                    );
+                  }}
+                  className={`text-xs px-2.5 py-1 rounded border transition-colors ${
+                    selectedTags.includes(tag)
+                      ? 'bg-blue-600 border-blue-500 text-white'
+                      : 'border-gray-600 text-gray-400 hover:border-gray-500'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
 
           {shoppingItems.length === 0 ? (
@@ -2760,7 +2796,7 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
               {shoppingItems.map((item) => (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-2 p-3 rounded-lg border transition-colors ${
+                  className={`flex items-start gap-2 p-3 rounded-lg border transition-colors ${
                     item.done
                       ? "bg-gray-800/30 border-gray-700 opacity-50"
                       : "bg-gray-800 border-gray-700 hover:border-blue-600"
@@ -2768,7 +2804,7 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                 >
                   <button
                     onClick={() => toggleShoppingItem(item.id)}
-                    className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                    className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all mt-0.5 ${
                       item.done
                         ? "bg-green-600 border-green-600"
                         : "border-gray-500 hover:border-blue-400"
@@ -2776,12 +2812,26 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                   >
                     {item.done && <span className="text-white text-xs font-bold">✓</span>}
                   </button>
-                  <span className={`flex-1 text-sm ${item.done ? "line-through text-gray-500" : "text-gray-100"}`}>
-                    {item.text}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-sm block ${item.done ? "line-through text-gray-500" : "text-gray-100"}`}>
+                      {item.text}
+                    </span>
+                    {(item.tags && item.tags.length > 0) && (
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {item.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-block text-xs px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded border border-gray-600"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={() => deleteShoppingItem(item.id)}
-                    className="text-gray-700 hover:text-red-500 text-sm transition-colors"
+                    className="text-gray-700 hover:text-red-500 text-sm transition-colors flex-shrink-0"
                     title="削除"
                   >
                     🗑

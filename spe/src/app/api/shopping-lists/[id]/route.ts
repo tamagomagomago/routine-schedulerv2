@@ -10,10 +10,19 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { is_completed } = await req.json();
+    const { is_completed, tags } = await req.json();
+    const updates: any = { updated_at: new Date().toISOString() };
+
+    if (is_completed !== undefined) {
+      updates.is_completed = is_completed;
+    }
+    if (tags !== undefined) {
+      updates.tags = tags;
+    }
+
     const { data, error } = await supabase
       .from("shopping_lists")
-      .update({ is_completed, updated_at: new Date().toISOString() })
+      .update(updates)
       .eq("id", parseInt(params.id))
       .select();
 

@@ -23,7 +23,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { title, category } = await req.json();
+    const { title, category, tags } = await req.json();
 
     if (!title || !category) {
       return NextResponse.json(
@@ -32,11 +32,14 @@ export async function POST(req: Request) {
       );
     }
 
+    const itemTags = tags || ['百均'];
+
     const { data, error } = await supabase
       .from("shopping_lists")
       .insert({
         title,
         category,
+        tags: itemTags,
         is_completed: false,
         user_id: "default_user",
       })

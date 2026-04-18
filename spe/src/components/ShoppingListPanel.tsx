@@ -8,6 +8,7 @@ interface ShoppingItem {
   category: string;
   is_completed: boolean;
   created_at: string;
+  tags: string[];
 }
 
 const DEFAULT_CATEGORIES = ["百均", "スーパー", "本屋", "ドラッグストア"];
