@@ -390,14 +390,26 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
 
   // 日付が変わったときに本日の悩み材料をリセット
   useEffect(() => {
-    const lastStoredDate = localStorage.getItem("v2_concerns_date");
-    if (lastStoredDate !== TODAY) {
-      // 日付が変わったので、新しい日付で初期化
-      localStorage.setItem("v2_concerns_date", TODAY);
-      setTodaysConcerns(""); // UI をリセット
-      // 前日のデータは既に Supabase に保存されているので履歴として残る
-    }
-  }, []);
+    const checkDateChange = () => {
+      const lastStoredDate = localStorage.getItem("v2_concerns_date");
+      const currentDate = new Date().toISOString().split("T")[0];
+      if (lastStoredDate !== currentDate) {
+        // 日付が変わったので、新しい日付で初期化
+        localStorage.setItem("v2_concerns_date", currentDate);
+        setTodaysConcerns(""); // UI をリセット
+        fetchData(); // 新しい日付のデータを取得
+        // 前日のデータは既に Supabase に保存されているので履歴として残る
+      }
+    };
+
+    // マウント時にチェック
+    checkDateChange();
+
+    // 毎分チェック（ブラウザを開いたまま日をまたぐ場合に対応）
+    const interval = setInterval(checkDateChange, 60000);
+
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   const handleVisionConfirm = async (text: string) => {
     const [monday, sunday] = text.split("---").map(s => s.trim());
