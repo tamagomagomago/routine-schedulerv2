@@ -81,7 +81,7 @@ interface TodayTabProps {
 }
 
 export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabProps) {
-  const [activeTab, setActiveTab] = useState<"list" | "today">("today");
+  const [activeTab, setActiveTab] = useState<"list" | "today" | "shopping">("today");
   const [allTodos, setAllTodos] = useState<TodoV2[]>([]);
   const [todayTodos, setTodayTodos] = useState<TodoV2[]>([]);
   const [weeklyGoals, setWeeklyGoals] = useState<GoalV2[]>([]);
@@ -172,6 +172,44 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
     return true;
   });
   const [weeklyReview, setWeeklyReview] = useState<any>(null);
+
+  // 買うものリスト
+  const [shoppingItems, setShoppingItems] = useState<Array<{ id: string; text: string; done: boolean }>>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("v2_shopping_list");
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
+  const [shoppingInput, setShoppingInput] = useState("");
+
+  const addShoppingItem = () => {
+    if (shoppingInput.trim()) {
+      const newItem = {
+        id: Date.now().toString(),
+        text: shoppingInput,
+        done: false,
+      };
+      const updated = [...shoppingItems, newItem];
+      setShoppingItems(updated);
+      localStorage.setItem("v2_shopping_list", JSON.stringify(updated));
+      setShoppingInput("");
+    }
+  };
+
+  const toggleShoppingItem = (id: string) => {
+    const updated = shoppingItems.map((item) =>
+      item.id === id ? { ...item, done: !item.done } : item
+    );
+    setShoppingItems(updated);
+    localStorage.setItem("v2_shopping_list", JSON.stringify(updated));
+  };
+
+  const deleteShoppingItem = (id: string) => {
+    const updated = shoppingItems.filter((item) => item.id !== id);
+    setShoppingItems(updated);
+    localStorage.setItem("v2_shopping_list", JSON.stringify(updated));
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -727,10 +765,13 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
     localStorage.setItem("v2_show_completed_section", String(val));
   };
 
-  const todayIncomplete = todayTodos.filter((t) => !t.is_completed);
-  const todayCompleted = todayTodos.filter((t) => t.is_completed);
+  // 重複を除外（同じIDを複数回カウントしない）
+  const uniqueTodayTodos = Array.from(new Map(todayTodos.map((t) => [t.id, t])).values());
+
+  const todayIncomplete = uniqueTodayTodos.filter((t) => !t.is_completed);
+  const todayCompleted = uniqueTodayTodos.filter((t) => t.is_completed);
   const todayMit = todayIncomplete.find((t) => t.is_mit);
-  const todayCompletionRate = todayTodos.length > 0 ? Math.round((todayCompleted.length / todayTodos.length) * 100) : 0;
+  const todayCompletionRate = uniqueTodayTodos.length > 0 ? Math.round((todayCompleted.length / uniqueTodayTodos.length) * 100) : 0;
   const todayTotalActual = todayCompleted.reduce((s, t) => s + (t.actual_minutes ?? t.estimated_minutes), 0);
 
   // 完了したタスクのカテゴリ別集計
@@ -997,6 +1038,16 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
           }`}
         >
           📋 TODOリスト
+        </button>
+        <button
+          onClick={() => setActiveTab("shopping")}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === "shopping"
+              ? "bg-blue-600 text-white"
+              : "bg-gray-800 text-gray-400 hover:text-gray-200"
+          }`}
+        >
+          🛒 買うもの
         </button>
       </div>
 
@@ -2033,13 +2084,47 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                 );
               })}
 
-              {/* 追加ボタン */}
-              <button
-                onClick={() => setShowForm((v) => !v)}
-                className="w-full py-2 rounded-xl border border-dashed border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-500 text-sm transition-colors"
-              >
-                {showForm ? "▲ 閉じる" : "+ タスクを追加"}
-              </button>
+              {/* 完了したタスク */}
+              {todayCompleted.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-xs font-semibold">✓ 完了済み ({todayCompleted.length}件)</span>
+                    <button
+                      onClick={() => setShowCompletedSection(!showCompletedSection)}
+                      className="text-xs text-gray-600 hover:text-gray-400"
+                    >
+                      {showCompletedSection ? "▼" : "▶"}
+                    </button>
+                  </div>
+                  {showCompletedSection && (
+                    <div className="space-y-1">
+                      {todayCompleted.map((todo) => (
+                        <div key={`completed-${todo.id}`} className="flex items-center gap-2 p-2 bg-gray-800/30 rounded-lg text-xs">
+                          <span className="text-green-500">✓</span>
+                          <span className="text-gray-500 flex-1 line-through">{todo.title}</span>
+                          <span className="text-gray-600">{todo.estimated_minutes}分</span>
+                          <button
+                            onClick={() => handleRemoveFromToday(todo.id)}
+                            className="text-gray-700 hover:text-orange-400 transition-colors text-xs"
+                            title="TODOリストに移す"
+                          >
+                            ↩
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+          )}
+
+          {/* 追加ボタン */}
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="w-full py-2 rounded-xl border border-dashed border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-500 text-sm transition-colors"
+          >
+            {showForm ? "▲ 閉じる" : "+ タスクを追加"}
+          </button>
 
               {/* 詳細入力フォーム */}
               {showForm && (
@@ -2526,6 +2611,84 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
                 </details>
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {/* 買うものリスト */}
+      {activeTab === "shopping" && (
+        <div className="px-4 space-y-3 pb-24">
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              placeholder="買うものを入力..."
+              value={shoppingInput}
+              onChange={(e) => setShoppingInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  addShoppingItem();
+                }
+              }}
+              className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={addShoppingItem}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              追加
+            </button>
+          </div>
+
+          {shoppingItems.length === 0 ? (
+            <p className="text-gray-600 text-sm text-center py-8">買うものはありません</p>
+          ) : (
+            <div className="space-y-2">
+              {shoppingItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-2 p-3 rounded-lg border transition-colors ${
+                    item.done
+                      ? "bg-gray-800/30 border-gray-700 opacity-50"
+                      : "bg-gray-800 border-gray-700 hover:border-blue-600"
+                  }`}
+                >
+                  <button
+                    onClick={() => toggleShoppingItem(item.id)}
+                    className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                      item.done
+                        ? "bg-green-600 border-green-600"
+                        : "border-gray-500 hover:border-blue-400"
+                    }`}
+                  >
+                    {item.done && <span className="text-white text-xs font-bold">✓</span>}
+                  </button>
+                  <span className={`flex-1 text-sm ${item.done ? "line-through text-gray-500" : "text-gray-100"}`}>
+                    {item.text}
+                  </span>
+                  <button
+                    onClick={() => deleteShoppingItem(item.id)}
+                    className="text-gray-700 hover:text-red-500 text-sm transition-colors"
+                    title="削除"
+                  >
+                    🗑
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {shoppingItems.some((item) => item.done) && (
+            <button
+              onClick={() => {
+                const updated = shoppingItems.filter((item) => !item.done);
+                setShoppingItems(updated);
+                localStorage.setItem("v2_shopping_list", JSON.stringify(updated));
+              }}
+              className="w-full py-2 text-center text-xs text-gray-500 hover:text-gray-300 transition-colors border border-dashed border-gray-700 rounded-lg"
+            >
+              完了したものを削除
+            </button>
           )}
         </div>
       )}
