@@ -94,6 +94,7 @@ export default function StatsTab() {
 
   const catData = stats
     ? Object.entries(stats.focusByCategory)
+        .filter(([cat]) => cat !== "personal")
         .sort(([, a], [, b]) => b - a)
         .map(([cat, minutes]) => ({ cat, minutes, label: `${CATEGORY_EMOJI[cat] ?? "📌"} ${cat}` }))
     : [];
@@ -108,11 +109,14 @@ export default function StatsTab() {
     rate: t.rate,
   }));
 
-  // weeklyDaily をフラット化してカテゴリをトップレベルキーにする
-  const weeklyDailyFlat = (stats?.weeklyDaily ?? []).map((day) => ({
-    day: day.day,
-    ...day.categories,
-  }));
+  // weeklyDaily をフラット化してカテゴリをトップレベルキーにする（personal は除外）
+  const weeklyDailyFlat = (stats?.weeklyDaily ?? []).map((day) => {
+    const { personal, ...rest } = day.categories || {};
+    return {
+      day: day.day,
+      ...rest,
+    };
+  });
 
   return (
     <div className="pb-24 px-4 pt-4 space-y-6">
@@ -179,8 +183,10 @@ export default function StatsTab() {
                 labelStyle={{ color: "#e5e7eb" }}
                 formatter={(v: number) => `${v}分`}
               />
-              {/* 各カテゴリのバーを積み重ねる */}
-              {Object.keys(BAR_COLORS).map((category) => (
+              {/* 各カテゴリのバーを積み重ねる（personal は除外） */}
+              {Object.keys(BAR_COLORS)
+                .filter((category) => category !== "personal")
+                .map((category) => (
                 <Bar
                   key={category}
                   dataKey={category}
@@ -193,7 +199,9 @@ export default function StatsTab() {
           </ResponsiveContainer>
           {/* カテゴリ凡例 */}
           <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-            {Object.entries(BAR_COLORS).map(([category, color]) => {
+            {Object.entries(BAR_COLORS)
+              .filter(([category]) => category !== "personal")
+              .map(([category, color]) => {
               const totalMinutes = weeklyDailyFlat.reduce((sum, day) => sum + (day[category as keyof typeof day] ?? 0), 0);
               return totalMinutes > 0 ? (
                 <div key={category} className="flex items-center gap-2">
