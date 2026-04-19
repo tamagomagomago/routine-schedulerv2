@@ -11,10 +11,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   try {
     body = await req.json();
 
+    // 許可されたフィールドのみを更新対象に含める
+    const allowedFields = [
+      "title", "category", "priority", "estimated_minutes",
+      "scheduled_date", "scheduled_start", "is_completed", "is_mit", "goal_id", "completed_at"
+    ];
+
     const updates: Record<string, unknown> = {
-      ...body,
       updated_at: new Date().toISOString(),
     };
+
+    // 許可されたフィールドのみを updates に追加
+    for (const key of allowedFields) {
+      if (key in body) {
+        updates[key] = body[key];
+      }
+    }
 
     // 完了時は完了日時を自動設定
     if (body.is_completed === true && !body.completed_at) {
