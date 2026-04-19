@@ -633,6 +633,31 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
     }
   };
 
+  const handleAddTodayRoutines = async () => {
+    try {
+      const res = await fetch(`/api/v2/routines/add-today`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.added > 0) {
+          alert(`✅ ${data.added}個のルーティンを追加しました${data.skipped > 0 ? `（重複: ${data.skipped}個）` : ""}`);
+        } else {
+          alert(data.skipped > 0 ? `ℹ️ すべてのルーティンが既に追加されています（${data.skipped}個）` : "ℹ️ 今日に合致するルーティンはありません");
+        }
+        await fetchData();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error(`Failed to add today's routines:`, res.status, errorData);
+        alert(`エラー: ${res.status} - ルーティン追加に失敗しました`);
+      }
+    } catch (error) {
+      console.error(`Error adding today's routines:`, error);
+      alert(`エラー: ルーティン追加に失敗しました\n${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   const handleEdit = async (todo: TodoV2) => {
     setEditingTodoId(todo.id);
     setEditForm(todo);
@@ -1095,6 +1120,18 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
           🛒 買うもの
         </button>
       </div>
+
+      {/* 今日のルーティン一括追加ボタン（今日のTODOタブのみ表示） */}
+      {activeTab === "today" && (
+        <div className="px-4 mb-4">
+          <button
+            onClick={handleAddTodayRoutines}
+            className="w-full py-2 px-3 bg-green-700 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            📅 今日のルーティンを追加
+          </button>
+        </div>
+      )}
 
       {/* TODOリスト一覧 */}
       {activeTab === "list" && (
