@@ -594,21 +594,43 @@ export default function TodayTab({ onStartFocus, onNavigateToStats }: TodayTabPr
   };
 
   const handleAddToToday = async (id: number) => {
-    const res = await fetch(`/api/v2/todos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheduled_date: TODAY }),
-    });
-    if (res.ok) fetchData();
+    try {
+      const res = await fetch(`/api/v2/todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduled_date: TODAY }),
+      });
+      if (res.ok) {
+        await fetchData();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error(`Failed to add todo ${id} to today:`, res.status, errorData);
+        alert(`エラー: ${res.status} - タスクを追加できませんでした`);
+      }
+    } catch (error) {
+      console.error(`Error adding todo ${id} to today:`, error);
+      alert(`エラー: タスク追加に失敗しました\n${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const handleRemoveFromToday = async (id: number) => {
-    const res = await fetch(`/api/v2/todos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheduled_date: null }),
-    });
-    if (res.ok) fetchData();
+    try {
+      const res = await fetch(`/api/v2/todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduled_date: null }),
+      });
+      if (res.ok) {
+        await fetchData();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error(`Failed to remove todo ${id} from today:`, res.status, errorData);
+        alert(`エラー: ${res.status} - タスクを削除できませんでした`);
+      }
+    } catch (error) {
+      console.error(`Error removing todo ${id} from today:`, error);
+      alert(`エラー: タスク削除に失敗しました\n${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const handleEdit = async (todo: TodoV2) => {

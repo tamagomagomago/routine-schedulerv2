@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/add-routines",
+      "schedule": "0 5 * * *"
+    },
+    {
       "path": "/api/cron/decompose-monthly-goals",
       "schedule": "0 8 1 * *"
     },
